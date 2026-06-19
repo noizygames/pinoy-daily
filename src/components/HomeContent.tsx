@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import ShareCard from "@/components/ShareCard";
+import AdSenseUnit from "@/components/AdSenseUnit";
 import { initAnalytics, trackShared, trackViewed } from "@/lib/analytics";
 import { getTodayContent } from "@/lib/daily";
 
@@ -262,9 +263,7 @@ export default function HomeContent() {
           I-share sa Facebook, Messenger, Instagram, TikTok, o Viber
         </p>
 
-        <div className="flex h-24 items-center justify-center rounded-2xl border-2 border-dashed border-neutral-300 bg-white/60 text-sm font-medium text-neutral-400">
-          Advertisement
-        </div>
+        <AdSenseUnit />
 
         <p className="mt-5 pb-2 text-center text-sm text-neutral-400">
           ✨ Bagong hula bukas!
