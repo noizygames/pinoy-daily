@@ -13,10 +13,20 @@ export default function AdSenseUnit() {
   useEffect(() => {
     if (!ADSENSE_SLOT) return;
 
-    try {
-      (window.adsbygoogle = window.adsbygoogle || []).push({});
-    } catch {
-      // AdSense may not be ready yet
+    const pushAd = () => {
+      try {
+        (window.adsbygoogle = window.adsbygoogle || []).push({});
+      } catch {
+        // AdSense may not be ready yet
+      }
+    };
+
+    // Wait for adsbygoogle.js to finish loading before pushing the ad unit
+    if (document.querySelector('script[src*="adsbygoogle.js"]')) {
+      pushAd();
+    } else {
+      const timer = window.setTimeout(pushAd, 300);
+      return () => window.clearTimeout(timer);
     }
   }, []);
 
