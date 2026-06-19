@@ -181,10 +181,10 @@ export default function HomeContent() {
               <p className="mb-3 text-sm text-neutral-700">
                 Email:{" "}
                 <a
-                  href="mailto:hello@pinoydaily.app"
+                  href="mailto:noizygamesstudio@gmail.com"
                   className="font-medium text-neutral-900 underline"
                 >
-                  hello@pinoydaily.app
+                  noizygamesstudio@gmail.com
                 </a>
               </p>
               <p className="text-sm leading-relaxed text-neutral-500">
