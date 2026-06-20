@@ -279,7 +279,10 @@ export default function HomeContent() {
           luckyNumber={luckyNumber}
           colorName={luckyColor.name}
           colorHex={luckyColor.hex}
+          categoryColor="#E91E63"
           dateString={dateString}
+          categoryEmoji="🌟"
+          categoryLabel="Hula"
         />
       </div>
     </div>
