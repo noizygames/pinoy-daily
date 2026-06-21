@@ -1,41 +1,88 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { BACKUP_PICKUP_LINES } from "@/data/backupContent";
-import { initAnalytics } from "@/lib/analytics";
+import { useState, useEffect } from "react";
 import {
+  getLimitStatus,
   consumeLimit,
   getLimitMessage,
-  getLimitStatus,
   releaseLimit,
   type LimitStatus,
 } from "@/lib/dailyLimits";
-import { getUnseenPickupLine } from "@/lib/seenPredictions";
-import { getUserId } from "@/lib/userIdentity";
+import { initAnalytics } from "@/lib/analytics";
 import BottomNav from "@/components/BottomNav";
 
+type PickupLineResult = {
+  line: string;
+  punchline: string;
+};
+
+type LineCategory = {
+  id: string;
+  label: string;
+  emoji: string;
+  description: string;
+};
+
 const PINK = "#E91E63";
-const ORANGE = "#FF5722";
-const GRADIENT = `linear-gradient(135deg, ${PINK}, ${ORANGE})`;
+const RED = "#FF5722";
+const GRADIENT = `linear-gradient(135deg, ${PINK}, ${RED})`;
+
+const LINE_CATEGORIES: LineCategory[] = [
+  {
+    id: "classic",
+    label: "Classic Pinoy",
+    emoji: "🇵🇭",
+    description: "Jeep, trike, load...",
+  },
+  {
+    id: "food",
+    label: "Food Edition",
+    emoji: "🍚",
+    description: "Adobo, kanin, siomai...",
+  },
+  {
+    id: "tech",
+    label: "Tech Edition",
+    emoji: "📱",
+    description: "WiFi, signal, battery...",
+  },
+  {
+    id: "work",
+    label: "Work Edition",
+    emoji: "💼",
+    description: "Sweldo, meeting, OT...",
+  },
+  {
+    id: "cringe",
+    label: "Cringe Edition",
+    emoji: "😬",
+    description: "Absurd pero nakakatawa",
+  },
+  {
+    id: "plot-twist",
+    label: "Plot Twist",
+    emoji: "😂",
+    description: "Masakit pero totoo",
+  },
+];
 
 export default function PickupPage() {
-  const [lines, setLines] = useState<string[]>([]);
-  const [selectedLine, setSelectedLine] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<LineCategory>(
+    LINE_CATEGORIES[0]!,
+  );
+  const [lines, setLines] = useState<PickupLineResult[]>([]);
+  const [selectedLine, setSelectedLine] = useState<PickupLineResult | null>(
+    null,
+  );
   const [isLoading, setIsLoading] = useState(false);
   const [limitStatus, setLimitStatus] = useState<LimitStatus | null>(null);
   const [hasCopied, setHasCopied] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
   const [isUsingBackup, setIsUsingBackup] = useState(false);
-  const [hasLoadedStatic, setHasLoadedStatic] = useState(false);
 
   useEffect(() => {
     initAnalytics();
     setLimitStatus(getLimitStatus("aiPickupLine"));
-
-    const userId = getUserId();
-    const staticLine = getUnseenPickupLine(userId, BACKUP_PICKUP_LINES);
-    setSelectedLine(staticLine);
-    setHasLoadedStatic(true);
   }, []);
 
   async function handleGenerate() {
@@ -43,24 +90,34 @@ export default function PickupPage() {
     if (!consumed) return;
 
     setIsLoading(true);
+    setLines([]);
+    setSelectedLine(null);
+    setIsUsingBackup(false);
 
     try {
-      const res = await fetch("/api/ai-pickup");
+      const res = await fetch(
+        `/api/ai-pickup?category=${selectedCategory.id}`,
+      );
       const data = (await res.json()) as {
-        lines?: unknown[];
+        lines?: PickupLineResult[];
         usingBackup?: boolean;
       };
 
-      const unseenLines = (data.lines ?? []).filter(
-        (line): line is string => typeof line === "string",
+      const validLines = (data.lines ?? []).filter(
+        (item) =>
+          item &&
+          typeof item.line === "string" &&
+          typeof item.punchline === "string" &&
+          item.line.trim().length > 0 &&
+          item.punchline.trim().length > 0,
       );
 
-      if (unseenLines.length === 0) {
+      if (validLines.length === 0) {
         throw new Error("No pickup lines returned");
       }
 
-      setLines(unseenLines);
-      setSelectedLine(unseenLines[0] ?? null);
+      setLines(validLines);
+      setSelectedLine(validLines[0] ?? null);
       setIsUsingBackup(data.usingBackup ?? false);
       setLimitStatus(getLimitStatus("aiPickupLine"));
     } catch {
@@ -75,7 +132,8 @@ export default function PickupPage() {
   async function handleCopy() {
     if (!selectedLine) return;
 
-    await navigator.clipboard.writeText(selectedLine);
+    const text = `${selectedLine.line}\n${selectedLine.punchline}\n\n— SwertengPinoy Pick Up Line Generator`;
+    await navigator.clipboard.writeText(text);
     setHasCopied(true);
     setTimeout(() => setHasCopied(false), 2000);
   }
@@ -83,7 +141,7 @@ export default function PickupPage() {
   async function handleShareText() {
     if (!selectedLine) return;
 
-    const shareText = `${selectedLine}\n\nKumuha ng sariling pick up line sa swertengpinoy.app`;
+    const shareText = `${selectedLine.line}\n${selectedLine.punchline}\n\nKumuha ng sariling pick up line sa swertengpinoy.app`;
 
     if (navigator.share) {
       await navigator.share({
@@ -135,11 +193,18 @@ export default function PickupPage() {
     }
   }
 
+  function handleCategorySelect(category: LineCategory) {
+    setSelectedCategory(category);
+    setLines([]);
+    setSelectedLine(null);
+    setIsUsingBackup(false);
+  }
+
   const isExhausted = limitStatus?.isExhausted ?? false;
 
   return (
     <main className="min-h-screen bg-gray-50 pb-24">
-      <header className="px-5 pt-8 pb-12" style={{ background: GRADIENT }}>
+      <header className="px-5 pt-8 pb-14" style={{ background: GRADIENT }}>
         <h1 className="text-3xl font-black text-white">
           💘 Pick Up Line Generator
         </h1>
@@ -148,24 +213,40 @@ export default function PickupPage() {
         </p>
       </header>
 
-      <div className="-mt-6 rounded-t-3xl bg-white px-5 pt-6">
-        {hasLoadedStatic && lines.length === 0 && selectedLine && (
-          <section>
-            <p className="mb-3 text-xs font-bold tracking-wider text-gray-400 uppercase">
-              Ang pick up line mo ngayon:
-            </p>
-            <div className="rounded-2xl border-l-4 border-pink-500 bg-white p-5 shadow-sm">
-              <p className="text-lg font-semibold text-gray-900 italic">
-                &ldquo;{selectedLine}&rdquo;
-              </p>
-            </div>
-            <p className="mt-2 text-xs text-gray-400">
-              💡 I-generate para sa AI pick up lines
-            </p>
-          </section>
-        )}
+      <div className="-mt-8 rounded-t-3xl bg-white px-5 pt-6">
+        <section className="mb-5">
+          <p className="mb-3 text-xs font-bold tracking-wider text-gray-400 uppercase">
+            Piliin ang theme:
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            {LINE_CATEGORIES.map((category) => {
+              const isSelected = selectedCategory.id === category.id;
 
-        <section className="mt-4">
+              return (
+                <button
+                  key={category.id}
+                  type="button"
+                  onClick={() => handleCategorySelect(category)}
+                  className="rounded-xl bg-white p-3 text-left shadow-sm transition"
+                  style={{
+                    border: isSelected
+                      ? "2px solid #f472b6"
+                      : "1px solid #f3f4f6",
+                    backgroundColor: isSelected ? "#fdf2f8" : "#ffffff",
+                  }}
+                >
+                  <span className="text-2xl">{category.emoji}</span>
+                  <p className="mt-1 text-sm font-semibold text-gray-900">
+                    {category.label}
+                  </p>
+                  <p className="text-xs text-gray-400">{category.description}</p>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="mb-6">
           {isExhausted ? (
             <p className="text-center text-sm text-gray-500">
               {limitStatus ? getLimitMessage(limitStatus) : ""}
@@ -174,14 +255,14 @@ export default function PickupPage() {
             <>
               <button
                 type="button"
-                onClick={handleGenerate}
+                onClick={() => void handleGenerate()}
                 disabled={isLoading || !limitStatus}
-                className="w-full rounded-2xl py-4 text-sm font-bold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+                className="w-full rounded-2xl py-4 text-base font-bold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
                 style={{ background: GRADIENT }}
               >
                 {isLoading
                   ? "💘 Naghahanap ng tamang salita..."
-                  : `💘 Mag-generate ng Pick Up Line (${limitStatus?.remaining ?? 3} natitira)`}
+                  : `💘 Mag-generate ng ${selectedCategory.label} Line`}
               </button>
               {limitStatus && (
                 <p className="mt-2 text-center text-xs text-gray-400">
@@ -192,34 +273,45 @@ export default function PickupPage() {
           )}
         </section>
 
-        {lines.length > 0 && (
-          <section className="mt-6">
-            <h2 className="mb-3 font-bold text-gray-900">
+        {isLoading && (
+          <section className="py-8 text-center">
+            <p className="animate-pulse text-5xl">💘</p>
+            <p className="mt-3 text-center text-sm text-gray-400">
+              Naghahanap ng tamang salita...
+            </p>
+          </section>
+        )}
+
+        {lines.length > 0 && !isLoading && (
+          <section>
+            <h2 className="mb-4 font-bold text-gray-900">
               Piliin ang iyong linya:
             </h2>
 
-            {lines.map((line, index) => {
-              const isSelected = selectedLine === line;
+            {lines.map((item, index) => {
+              const isSelected = selectedLine === item;
 
               return (
                 <button
-                  key={`${index}-${line.slice(0, 24)}`}
+                  key={`${index}-${item.line}`}
                   type="button"
-                  onClick={() => setSelectedLine(line)}
-                  className="mb-3 flex w-full items-start justify-between gap-3 rounded-2xl p-4 text-left shadow-sm transition"
+                  onClick={() => setSelectedLine(item)}
+                  className="relative mb-3 w-full rounded-2xl p-5 text-left shadow-sm transition"
                   style={{
-                    borderLeft: `3px solid ${isSelected ? PINK : "transparent"}`,
-                    backgroundColor: isSelected ? "#FFF0F5" : "#ffffff",
+                    border: isSelected
+                      ? "2px solid #f472b6"
+                      : "1px solid #f3f4f6",
+                    backgroundColor: isSelected ? "#fdf2f8" : "#ffffff",
                   }}
                 >
-                  <span className="font-medium text-gray-800 italic">
-                    &ldquo;{line}&rdquo;
-                  </span>
+                  <p className="mb-2 text-base font-bold text-gray-900">
+                    💘 {item.line}
+                  </p>
+                  <p className="pr-8 text-sm leading-relaxed text-gray-500 italic">
+                    {item.punchline}
+                  </p>
                   {isSelected && (
-                    <span
-                      className="shrink-0 text-lg font-bold"
-                      style={{ color: PINK }}
-                    >
+                    <span className="absolute right-4 bottom-4 text-lg font-bold text-pink-400">
                       ✓
                     </span>
                   )}
@@ -229,39 +321,74 @@ export default function PickupPage() {
           </section>
         )}
 
-        {selectedLine && (
-          <section
-            className="mt-4 rounded-2xl p-5"
-            style={{ background: GRADIENT }}
-          >
-            <p className="mb-2 text-xs text-pink-200">
-              💘 Ang iyong pick up line:
-            </p>
-            <p className="text-lg leading-relaxed font-bold text-white italic">
-              &ldquo;{selectedLine}&rdquo;
-            </p>
-            <div className="mt-4 flex gap-2">
+        {selectedLine && lines.length > 0 && !isLoading && (
+          <section className="mt-2 mb-4">
+            <div
+              style={{
+                background: GRADIENT,
+                borderRadius: "20px",
+                padding: "28px",
+              }}
+            >
+              <div
+                style={{
+                  color: "rgba(255,255,255,0.7)",
+                  fontSize: "11px",
+                  marginBottom: "20px",
+                }}
+              >
+                💘 ANG IYONG PICK UP LINE
+              </div>
+
+              <div
+                style={{
+                  fontSize: "22px",
+                  fontWeight: 800,
+                  color: "white",
+                  marginBottom: "12px",
+                  lineHeight: 1.3,
+                }}
+              >
+                {selectedLine.line}
+              </div>
+
+              <div
+                style={{
+                  fontSize: "17px",
+                  color: "rgba(255,255,255,0.9)",
+                  fontStyle: "italic",
+                  lineHeight: 1.5,
+                  paddingTop: "12px",
+                  borderTop: "1px solid rgba(255,255,255,0.2)",
+                }}
+              >
+                {selectedLine.punchline}
+              </div>
+            </div>
+
+            <div className="mt-3 flex gap-2">
               <button
                 type="button"
-                onClick={handleCopy}
-                className="flex-1 rounded-2xl border border-white bg-white py-3 text-xs font-bold"
-                style={{ color: PINK }}
+                onClick={() => void handleCopy()}
+                className="flex-1 rounded-xl border bg-white py-3 text-xs font-bold"
+                style={{ borderColor: PINK, color: PINK }}
               >
                 {hasCopied ? "✅ Nakopya!" : "📋 Kopyahin"}
               </button>
               <button
                 type="button"
-                onClick={handleShareImage}
+                onClick={() => void handleShareImage()}
                 disabled={isCapturing}
-                className="flex-1 rounded-2xl bg-white py-3 text-xs font-bold disabled:opacity-60"
-                style={{ color: PINK }}
+                className="flex-1 rounded-xl py-3 text-xs font-bold text-white disabled:opacity-60"
+                style={{ background: GRADIENT }}
               >
                 {isCapturing ? "⏳..." : "📸 I-save"}
               </button>
               <button
                 type="button"
-                onClick={handleShareText}
-                className="flex-1 rounded-2xl border border-white py-3 text-xs font-bold text-white"
+                onClick={() => void handleShareText()}
+                className="flex-1 rounded-xl border bg-white py-3 text-xs font-bold"
+                style={{ borderColor: PINK, color: PINK }}
               >
                 📤 I-share
               </button>
@@ -287,7 +414,7 @@ export default function PickupPage() {
           left: "-9999px",
           top: 0,
           width: "400px",
-          height: "400px",
+          height: "420px",
           background: GRADIENT,
           borderRadius: "24px",
           padding: "40px 32px",
@@ -298,25 +425,46 @@ export default function PickupPage() {
           boxSizing: "border-box",
         }}
       >
-        <div style={{ fontSize: "18px", fontWeight: 800, color: "white" }}>
-          💘 SwertengPinoy
-        </div>
         <div
           style={{
-            fontSize: "20px",
-            fontWeight: 700,
-            color: "white",
-            lineHeight: 1.5,
-            textAlign: "center",
-            fontStyle: "italic",
+            fontSize: "16px",
+            fontWeight: 800,
+            color: "rgba(255,255,255,0.9)",
           }}
         >
-          &ldquo;{selectedLine || ""}&rdquo;
+          💘 SwertengPinoy
         </div>
+
+        <div>
+          <div
+            style={{
+              fontSize: "26px",
+              fontWeight: 800,
+              color: "white",
+              lineHeight: 1.3,
+              marginBottom: "16px",
+            }}
+          >
+            {selectedLine?.line || ""}
+          </div>
+          <div
+            style={{
+              fontSize: "18px",
+              color: "rgba(255,255,255,0.85)",
+              fontStyle: "italic",
+              lineHeight: 1.5,
+              paddingTop: "16px",
+              borderTop: "1px solid rgba(255,255,255,0.25)",
+            }}
+          >
+            {selectedLine?.punchline || ""}
+          </div>
+        </div>
+
         <div
           style={{
             fontSize: "12px",
-            color: "rgba(255,255,255,0.6)",
+            color: "rgba(255,255,255,0.5)",
             textAlign: "center",
           }}
         >

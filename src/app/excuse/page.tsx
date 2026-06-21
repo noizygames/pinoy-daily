@@ -1,36 +1,96 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import {
+  getLimitStatus,
   consumeLimit,
   getLimitMessage,
-  getLimitStatus,
   releaseLimit,
   type LimitStatus,
 } from "@/lib/dailyLimits";
 import { initAnalytics } from "@/lib/analytics";
 import BottomNav from "@/components/BottomNav";
 
-const ACCENT = "#E67E22";
+type ExcuseResult = {
+  situation: string;
+  excuse: string;
+};
 
-const PRESETS = [
-  { emoji: "😴", label: "Late sa trabaho" },
-  { emoji: "📵", label: "Hindi nakita ang text" },
-  { emoji: "🏫", label: "Walang homework" },
-  { emoji: "🎉", label: "Absent sa event" },
-  { emoji: "💸", label: "Walang pera" },
-  { emoji: "😷", label: "Ayaw lumabas" },
-  { emoji: "📞", label: "Hindi sumasagot ng tawag" },
-  { emoji: "🍽️", label: "Hindi nakapag-ulam" },
+type ExcuseCategory = {
+  id: string;
+  label: string;
+  emoji: string;
+  tagalog: string;
+};
+
+const ORANGE = "#E67E22";
+const GOLD = "#F39C12";
+const GRADIENT = `linear-gradient(135deg, ${ORANGE}, ${GOLD})`;
+
+const CATEGORIES: ExcuseCategory[] = [
+  {
+    id: "late-work",
+    label: "Late sa Trabaho",
+    emoji: "🏢",
+    tagalog: "Nalate sa trabaho",
+  },
+  {
+    id: "late-school",
+    label: "Late sa School",
+    emoji: "🏫",
+    tagalog: "Nalate sa school",
+  },
+  {
+    id: "no-reply",
+    label: "Hindi Nagreply",
+    emoji: "📵",
+    tagalog: "Hindi nagreply",
+  },
+  {
+    id: "no-money",
+    label: "Walang Pera",
+    emoji: "💸",
+    tagalog: "Walang pera",
+  },
+  {
+    id: "absent",
+    label: "Absent",
+    emoji: "🙈",
+    tagalog: "Nag-absent",
+  },
+  {
+    id: "missed-deadline",
+    label: "Late ang Submit",
+    emoji: "📋",
+    tagalog: "Hindi natapos ang task",
+  },
+  {
+    id: "breakup",
+    label: "Iniiwasan",
+    emoji: "🏃",
+    tagalog: "Iniiwan ang tao",
+  },
+  {
+    id: "forgot",
+    label: "Nakalimutan",
+    emoji: "🤔",
+    tagalog: "Nakalimutan",
+  },
 ];
 
 export default function ExcusePage() {
-  const [situation, setSituation] = useState("");
-  const [excuses, setExcuses] = useState<string[]>([]);
-  const [selectedExcuse, setSelectedExcuse] = useState<string | null>(null);
+  const [selectedCategory, setSelectedCategory] = useState<ExcuseCategory>(
+    CATEGORIES[0]!,
+  );
+  const [excuses, setExcuses] = useState<ExcuseResult[]>([]);
+  const [selectedExcuse, setSelectedExcuse] = useState<ExcuseResult | null>(
+    null,
+  );
+  const [customSituation, setCustomSituation] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [limitStatus, setLimitStatus] = useState<LimitStatus | null>(null);
   const [hasCopied, setHasCopied] = useState(false);
+  const [isCapturing, setIsCapturing] = useState(false);
   const [isUsingBackup, setIsUsingBackup] = useState(false);
 
   useEffect(() => {
@@ -39,36 +99,41 @@ export default function ExcusePage() {
   }, []);
 
   async function handleGenerate() {
-    if (!situation.trim()) {
-      alert("Anong situation mo? Ilagay mo muna!");
-      return;
-    }
-
     const consumed = consumeLimit("aiExcuse");
     if (!consumed) return;
 
     setIsLoading(true);
+    setExcuses([]);
+    setSelectedExcuse(null);
+    setIsUsingBackup(false);
 
     try {
-      const res = await fetch(
-        `/api/ai-excuse?situation=${encodeURIComponent(situation)}`,
-      );
+      const params = new URLSearchParams({
+        category: selectedCategory.id,
+        situation: customSituation || selectedCategory.tagalog,
+      });
+      const res = await fetch(`/api/ai-excuse?${params}`);
       const data = (await res.json()) as {
-        excuses?: unknown[];
+        excuses?: ExcuseResult[];
         usingBackup?: boolean;
       };
 
-      const parsedExcuses = (data.excuses ?? []).filter(
-        (item): item is string => typeof item === "string",
+      const validExcuses = (data.excuses ?? []).filter(
+        (item) =>
+          item &&
+          typeof item.situation === "string" &&
+          typeof item.excuse === "string" &&
+          item.situation.trim().length > 0 &&
+          item.excuse.trim().length > 0,
       );
 
-      if (parsedExcuses.length === 0) {
+      if (validExcuses.length === 0) {
         throw new Error("No excuses returned");
       }
 
-      setExcuses(parsedExcuses);
+      setExcuses(validExcuses);
+      setSelectedExcuse(validExcuses[0] ?? null);
       setIsUsingBackup(data.usingBackup ?? false);
-      setSelectedExcuse(null);
       setLimitStatus(getLimitStatus("aiExcuse"));
     } catch {
       releaseLimit("aiExcuse");
@@ -82,75 +147,135 @@ export default function ExcusePage() {
   async function handleCopy() {
     if (!selectedExcuse) return;
 
-    await navigator.clipboard.writeText(selectedExcuse);
+    const text = `${selectedExcuse.situation}\n\n${selectedExcuse.excuse}\n\n— SwertengPinoy Excuse Generator`;
+    await navigator.clipboard.writeText(text);
     setHasCopied(true);
     setTimeout(() => setHasCopied(false), 2000);
   }
 
-  async function handleShare() {
+  async function handleShareText() {
     if (!selectedExcuse) return;
+
+    const shareText = `${selectedExcuse.situation}\n\n${selectedExcuse.excuse}\n\nKumuha ng sariling excuse sa swertengpinoy.app`;
 
     if (navigator.share) {
       await navigator.share({
-        title: "Pinoy Daily Excuse",
-        text: `${selectedExcuse}\n\nKumuha ng sariling excuse sa swertengpinoy.app`,
+        title: "SwertengPinoy Excuse",
+        text: shareText,
       });
     } else {
       await handleCopy();
     }
   }
 
+  async function handleShareImage() {
+    setIsCapturing(true);
+
+    try {
+      const html2canvas = (await import("html2canvas")).default;
+      const element = document.getElementById("excuse-card");
+
+      if (!element) return;
+
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        backgroundColor: "#ffffff",
+        useCORS: true,
+      });
+
+      await new Promise<void>((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            reject(new Error("Failed to create image"));
+            return;
+          }
+
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = "pinoy-excuse.png";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          resolve();
+        }, "image/png");
+      });
+    } catch {
+      await handleCopy();
+    } finally {
+      setIsCapturing(false);
+    }
+  }
+
+  function handleCategorySelect(category: ExcuseCategory) {
+    setSelectedCategory(category);
+    setExcuses([]);
+    setSelectedExcuse(null);
+    setIsUsingBackup(false);
+  }
+
   const isExhausted = limitStatus?.isExhausted ?? false;
 
   return (
     <main className="min-h-screen bg-gray-50 pb-24">
-      <header className="px-5 pt-8 pb-12" style={{ backgroundColor: ACCENT }}>
-        <h1 className="text-3xl font-black text-white">🙈 Excuse Generator</h1>
-        <p className="mt-1 text-orange-100">
-          Handa ka na bang mag-excuse? Tulungan kita.
+      <header className="px-5 pt-8 pb-14" style={{ background: GRADIENT }}>
+        <h1 className="text-3xl font-black text-white">🎭 Excuse Generator</h1>
+        <p className="mt-1 text-sm text-orange-100">
+          Ang sining ng pagdadahilan.
         </p>
       </header>
 
-      <div className="-mt-6 rounded-t-3xl bg-white px-5 pt-6">
-        <section>
-          <label
-            htmlFor="situation"
-            className="mb-2 block text-sm font-bold text-gray-500"
-          >
-            Anong nangyari?
-          </label>
-          <textarea
-            id="situation"
-            value={situation}
-            onChange={(e) => setSituation(e.target.value)}
-            placeholder="hal: late sa trabaho, walang load, natulog sa jeep..."
-            rows={3}
-            className="w-full rounded-2xl border border-gray-200 p-4 text-gray-900 outline-none focus:border-[#E67E22] focus:ring-2 focus:ring-[#E67E22]/30"
-          />
-        </section>
+      <div className="-mt-8 rounded-t-3xl bg-white px-5 pt-6">
+        <section className="mb-5">
+          <p className="mb-3 text-xs font-bold tracking-wider text-gray-400 uppercase">
+            Anong situation?
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            {CATEGORIES.map((category) => {
+              const isSelected = selectedCategory.id === category.id;
 
-        <section className="mt-3">
-          <p className="mb-2 text-xs text-gray-400">O piliin ang situation:</p>
-          <div className="overflow-x-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <div className="flex w-max gap-2 pb-1">
-              {PRESETS.map((preset) => (
+              return (
                 <button
-                  key={preset.label}
+                  key={category.id}
                   type="button"
-                  onClick={() =>
-                    setSituation(`${preset.emoji} ${preset.label}`)
-                  }
-                  className="shrink-0 rounded-full border px-3 py-2 text-sm font-medium whitespace-nowrap transition hover:bg-orange-50"
-                  style={{ borderColor: ACCENT, color: ACCENT }}
+                  onClick={() => handleCategorySelect(category)}
+                  className="rounded-xl bg-white p-3 text-left shadow-sm transition"
+                  style={{
+                    border: isSelected
+                      ? "2px solid #fb923c"
+                      : "1px solid #f3f4f6",
+                    backgroundColor: isSelected ? "#fff7ed" : "#ffffff",
+                  }}
                 >
-                  {preset.emoji} {preset.label}
+                  <span className="text-2xl">{category.emoji}</span>
+                  <p className="mt-1 text-sm font-medium text-gray-800">
+                    {category.label}
+                  </p>
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
         </section>
 
-        <section className="mt-4">
+        <section className="mb-5">
+          <label
+            htmlFor="custom-situation"
+            className="mb-2 block text-xs text-gray-400"
+          >
+            O ilagay ang specific na situation mo: (optional)
+          </label>
+          <input
+            id="custom-situation"
+            type="text"
+            value={customSituation}
+            onChange={(e) => setCustomSituation(e.target.value)}
+            placeholder={`hal. "${selectedCategory.tagalog} kasi..."`}
+            className="w-full rounded-xl border border-gray-200 p-3 text-sm text-gray-900 outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-400/30"
+          />
+        </section>
+
+        <section className="mb-6">
           {isExhausted ? (
             <p className="text-center text-sm text-gray-500">
               {limitStatus ? getLimitMessage(limitStatus) : ""}
@@ -159,16 +284,14 @@ export default function ExcusePage() {
             <>
               <button
                 type="button"
-                onClick={handleGenerate}
-                disabled={
-                  !situation.trim() || isLoading || isExhausted || !limitStatus
-                }
-                className="w-full rounded-2xl py-4 text-sm font-bold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
-                style={{ backgroundColor: ACCENT }}
+                onClick={() => void handleGenerate()}
+                disabled={isLoading || !limitStatus}
+                className="w-full rounded-2xl py-4 text-base font-bold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+                style={{ background: GRADIENT }}
               >
                 {isLoading
-                  ? "🤖 Nag-iisip ng dahilan..."
-                  : "🤖 Gumawa ng Excuse"}
+                  ? "🎭 Naghahanap ng dahilan..."
+                  : "🎭 Gumawa ng Excuse"}
               </button>
               {limitStatus && (
                 <p className="mt-2 text-center text-xs text-gray-400">
@@ -179,32 +302,51 @@ export default function ExcusePage() {
           )}
         </section>
 
-        {excuses.length > 0 && (
-          <section className="mt-6">
-            <h2 className="mb-3 font-bold text-gray-900">
+        {isLoading && (
+          <section className="py-8 text-center">
+            <p className="animate-pulse text-5xl">🎭</p>
+            <p className="mt-3 text-center text-sm text-gray-400">
+              Nag-iisip ng magandang dahilan...
+            </p>
+          </section>
+        )}
+
+        {excuses.length > 0 && !isLoading && (
+          <section>
+            <h2 className="mb-4 font-bold text-gray-900">
               Piliin ang iyong excuse:
             </h2>
 
-            {excuses.map((excuse) => {
-              const isSelected = selectedExcuse === excuse;
+            {excuses.map((item, index) => {
+              const isSelected = selectedExcuse === item;
 
               return (
                 <button
-                  key={excuse}
+                  key={`${index}-${item.situation}`}
                   type="button"
-                  onClick={() => setSelectedExcuse(excuse)}
-                  className="mb-3 flex w-full items-start justify-between gap-3 rounded-2xl p-4 text-left shadow-sm transition"
+                  onClick={() => setSelectedExcuse(item)}
+                  className="relative mb-3 w-full cursor-pointer rounded-2xl p-5 text-left shadow-sm transition"
                   style={{
-                    borderLeft: `3px solid ${isSelected ? ACCENT : "#f0f0f0"}`,
-                    backgroundColor: isSelected ? "#FEF3E7" : "#ffffff",
+                    border: isSelected
+                      ? "2px solid #fb923c"
+                      : "1px solid #f3f4f6",
+                    backgroundColor: isSelected ? "#fff7ed" : "#ffffff",
                   }}
                 >
-                  <span className="font-medium text-gray-800">{excuse}</span>
+                  <p className="mb-1 text-xs font-bold text-orange-500">
+                    📍 Reason:
+                  </p>
+                  <p className="mb-3 text-sm font-semibold text-gray-900">
+                    {item.situation}
+                  </p>
+                  <p className="mb-1 text-xs font-bold text-gray-400">
+                    💬 Excuse:
+                  </p>
+                  <p className="pr-8 text-sm leading-relaxed text-gray-700">
+                    {item.excuse}
+                  </p>
                   {isSelected && (
-                    <span
-                      className="shrink-0 text-lg font-bold"
-                      style={{ color: ACCENT }}
-                    >
+                    <span className="absolute right-4 bottom-4 text-lg font-bold text-orange-400">
                       ✓
                     </span>
                   )}
@@ -214,31 +356,91 @@ export default function ExcusePage() {
           </section>
         )}
 
-        {selectedExcuse && (
-          <section
-            className="mt-4 rounded-2xl p-4"
-            style={{ backgroundColor: "#FEF3E7" }}
-          >
-            <p className="text-xs font-semibold" style={{ color: ACCENT }}>
-              Ang piniling excuse mo:
-            </p>
-            <p className="mt-1 mb-4 font-semibold text-gray-900">
-              {selectedExcuse}
-            </p>
-            <div className="flex gap-3">
+        {selectedExcuse && excuses.length > 0 && !isLoading && (
+          <section className="mt-2 mb-6">
+            <div
+              style={{
+                background: GRADIENT,
+                borderRadius: "16px",
+                padding: "24px",
+              }}
+            >
+              <div
+                style={{
+                  color: "rgba(255,255,255,0.7)",
+                  fontSize: "11px",
+                  marginBottom: "16px",
+                }}
+              >
+                🎭 ANG IYONG EXCUSE
+              </div>
+
+              <div style={{ marginBottom: "16px" }}>
+                <div
+                  style={{
+                    color: "rgba(255,255,255,0.6)",
+                    fontSize: "11px",
+                    marginBottom: "4px",
+                  }}
+                >
+                  📍 REASON:
+                </div>
+                <div
+                  style={{
+                    color: "white",
+                    fontWeight: 700,
+                    fontSize: "16px",
+                  }}
+                >
+                  {selectedExcuse.situation}
+                </div>
+              </div>
+
+              <div>
+                <div
+                  style={{
+                    color: "rgba(255,255,255,0.6)",
+                    fontSize: "11px",
+                    marginBottom: "4px",
+                  }}
+                >
+                  💬 EXCUSE:
+                </div>
+                <div
+                  style={{
+                    color: "white",
+                    fontSize: "15px",
+                    lineHeight: 1.6,
+                  }}
+                >
+                  {selectedExcuse.excuse}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-3 flex gap-2">
               <button
                 type="button"
-                onClick={handleCopy}
-                className="flex-1 rounded-2xl border bg-white py-3 text-sm font-bold transition hover:bg-orange-50"
-                style={{ borderColor: ACCENT, color: ACCENT }}
+                onClick={() => void handleCopy()}
+                className="flex-1 rounded-xl border bg-white py-3 text-xs font-bold"
+                style={{ borderColor: ORANGE, color: ORANGE }}
               >
                 {hasCopied ? "✅ Nakopya!" : "📋 Kopyahin"}
               </button>
               <button
                 type="button"
-                onClick={handleShare}
-                className="flex-1 rounded-2xl py-3 text-sm font-bold text-white transition hover:opacity-95"
-                style={{ backgroundColor: ACCENT }}
+                onClick={() => void handleShareImage()}
+                disabled={isCapturing}
+                className="flex-1 rounded-xl py-3 text-xs font-bold text-white disabled:opacity-60"
+                style={{ backgroundColor: ORANGE }}
+              >
+                {isCapturing ? "⏳..." : "📸 I-save"}
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleShareText()}
+                className="flex-1 rounded-xl border bg-white py-3 text-xs font-bold"
+                style={{ borderColor: ORANGE, color: ORANGE }}
               >
                 📤 I-share
               </button>
@@ -254,6 +456,104 @@ export default function ExcusePage() {
 
         <div className="mt-6 mb-6 rounded-2xl border border-dashed border-gray-200 p-4 text-center text-sm text-gray-300">
           Advertisement
+        </div>
+      </div>
+
+      <div
+        id="excuse-card"
+        style={{
+          position: "absolute",
+          left: "-9999px",
+          top: 0,
+          width: "400px",
+          backgroundColor: "#ffffff",
+          borderRadius: "24px",
+          overflow: "hidden",
+          fontFamily: "system-ui, -apple-system, sans-serif",
+          boxSizing: "border-box",
+        }}
+      >
+        <div
+          style={{
+            background: GRADIENT,
+            padding: "24px",
+          }}
+        >
+          <div
+            style={{
+              fontSize: "13px",
+              color: "rgba(255,255,255,0.8)",
+              marginBottom: "4px",
+            }}
+          >
+            🎭 SwertengPinoy — Excuse Generator
+          </div>
+          <div style={{ fontSize: "20px", fontWeight: 800, color: "white" }}>
+            Ang Aking Excuse
+          </div>
+        </div>
+
+        <div style={{ padding: "24px" }}>
+          <div
+            style={{
+              backgroundColor: "#FFF8F0",
+              borderRadius: "12px",
+              padding: "16px",
+              marginBottom: "16px",
+              borderLeft: "4px solid #E67E22",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "10px",
+                fontWeight: 700,
+                color: "#E67E22",
+                marginBottom: "6px",
+                letterSpacing: "1px",
+              }}
+            >
+              📍 REASON
+            </div>
+            <div style={{ fontSize: "16px", fontWeight: 700, color: "#1a1a1a" }}>
+              {selectedExcuse?.situation || ""}
+            </div>
+          </div>
+
+          <div
+            style={{
+              backgroundColor: "#F9F9F9",
+              borderRadius: "12px",
+              padding: "16px",
+              borderLeft: "4px solid #F39C12",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "10px",
+                fontWeight: 700,
+                color: "#F39C12",
+                marginBottom: "6px",
+                letterSpacing: "1px",
+              }}
+            >
+              💬 EXCUSE
+            </div>
+            <div style={{ fontSize: "15px", color: "#333", lineHeight: 1.6 }}>
+              {selectedExcuse?.excuse || ""}
+            </div>
+          </div>
+        </div>
+
+        <div
+          style={{
+            padding: "12px 24px",
+            textAlign: "center",
+            fontSize: "11px",
+            color: "#aaa",
+            borderTop: "1px solid #f0f0f0",
+          }}
+        >
+          swertengpinoy.app
         </div>
       </div>
 

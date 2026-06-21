@@ -6,7 +6,10 @@ type ChatCompletionResponse = {
   }>;
 };
 
-export async function generateWithGPT(prompt: string): Promise<string> {
+export async function generateWithGPT(
+  prompt: string,
+  maxTokens = 800,
+): Promise<string> {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error("INVALID_KEY");
   }
@@ -23,14 +26,14 @@ export async function generateWithGPT(prompt: string): Promise<string> {
         {
           role: "system",
           content:
-            "You are a funny Filipino content generator. Always respond in casual Filipino or Tagalog. Always return valid JSON arrays when asked with no extra text.",
+            "You are a funny Filipino content generator. Always respond in casual Filipino or Taglish. Always return valid JSON (arrays of strings or objects) with no extra text.",
         },
         {
           role: "user",
           content: prompt,
         },
       ],
-      max_tokens: 800,
+      max_tokens: maxTokens,
       temperature: 0.9,
     }),
   });

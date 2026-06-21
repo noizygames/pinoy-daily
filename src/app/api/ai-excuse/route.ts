@@ -1,69 +1,99 @@
-import { NextRequest, NextResponse } from "next/server";
-import { BACKUP_EXCUSES, getRandomBackups } from "@/data/backupContent";
-import { getExcusesFromPool, saveExcusesToPool } from "@/lib/communityPool";
+import { NextResponse } from "next/server";
 import { generateWithGPT, parseJsonFromAI } from "@/lib/openai";
+import { saveExcusesToPool } from "@/lib/communityPool";
+import { getRandomStructuredExcuses } from "@/data/backupContent";
 
-function buildPrompt(situation: string | null): string {
-  if (situation) {
-    return `You are a Filipino excuse writer. Your job is to write excuses that sound almost believable but are obviously funny. 
+const EXCUSE_CATEGORIES: Record<string, string> = {
+  "late-work": "Late for Work (nalate sa trabaho)",
+  "late-school": "Late for School (nalate sa school)",
+  "no-reply": "Didn't Reply (hindi nagreply sa text o tawag)",
+  "no-money": "No Money / Can't Pay Debt (walang pera o hindi nakabayad ng utang)",
+  absent: "Absent (absent sa trabaho, school, o event)",
+  "missed-deadline":
+    "Missed Deadline (hindi natapos ang trabaho o assignment)",
+  breakup:
+    "Avoiding Someone / Breakup Excuse (iniiwasan ang isang tao)",
+  forgot: "Forgot Something (nakalimutang pumunta o gumawa ng bagay)",
+};
 
-THE FORMAT:
-- 1 to 2 sentences maximum.
-- It should sound like a real excuse someone would actually try to use.
-- The humor comes from it being slightly too specific, too dramatic, or too absurd to be true — but still very Filipino.
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const category = searchParams.get("category") || "late-work";
+  const situation = searchParams.get("situation") || "";
 
-WHAT WORKS:
-- "Nag-alarm po ako pero nag-snooze yung puso ko." ← emotional but absurd
-- "May na-stroke ang wifi namin kanina tapos kasabay pa ng brownout." ← very Filipino, layered excuses
-- "Naghintay ako ng jeep pero parang ang jeep ay hindi naghihintay sa akin." ← philosophical and relatable
-- "Nakalimutan ko ang oras dahil ang oras ay isang social construct." ← too smart, obviously fake
+  const categoryLabel = EXCUSE_CATEGORIES[category] || "General Excuse";
 
-WHAT TO AVOID:
-- Do not just say "Natulog ako" — too simple, not funny.
-- Do not use formal Filipino — keep it casual Taglish.
-- Do not be offensive.
-- The excuse should fit the situation given.
+  const prompt = `Ikaw ay isang Filipino humor writer na eksperto sa paggawa ng nakakatawang excuses.
 
-SITUATION: ${situation}
+CATEGORY: ${categoryLabel}
+${situation ? `SPECIFIC SITUATION: ${situation}` : ""}
 
-Generate exactly 5 different excuses for this situation. Return ONLY a valid JSON array of 5 strings.`;
+FORMULA — rotate among these three for your 3 excuses:
+
+FORMULA 1 — Normal Situation + Overreaction + Absurd Conclusion:
+Halimbawa: "Nalate ako kasi nawalan ako ng isang medyas. Hinanap ko siya sa buong bahay. Hindi ko rin nakita ang motivation ko."
+
+FORMULA 2 — Good Intention + Unexpected Problem + Ridiculous Ending:
+Halimbawa: "Papasok na sana ako. Pero nahiga lang ako saglit. Nag-fast travel ako papuntang tanghali."
+
+FORMULA 3 — Everyday Filipino Problem + Exaggeration:
+Halimbawa: "Hindi ako nakapagtrabaho ngayon. May kapitbahay kaming nag-videoke. Ginawa ko na lang soundtrack ng buhay ko."
+
+RULES:
+- Isulat sa Tagalog o Taglish
+- Family-friendly, walang pulitika o relihiyon
+- Ang simula ay dapat mukhang totoo at believable
+- Ang ending ay absurd at nakakatawa
+- Maximum 3 sentences bawat excuse
+- Dapat maging relatable sa mga Pilipino
+- Parang viral meme caption ang dating
+
+FORMAT — return a JSON array of exactly 3 objects:
+[
+  {
+    "situation": "short phrase describing what happened (e.g. Nalate ako)",
+    "excuse": "the full 2-3 sentence excuse"
   }
+]
 
-  return "Generate exactly 5 funny all-purpose Filipino excuses that work for any situation. Same rules. JSON array only.";
-}
-
-export async function GET(request: NextRequest) {
-  const situation = request.nextUrl.searchParams.get("situation")?.trim() || null;
-  const prompt = buildPrompt(situation);
+No markdown. No explanation. Only the JSON array.`;
 
   try {
     const result = await generateWithGPT(prompt);
-    const parsedArray = parseJsonFromAI(result);
-    const excuses = parsedArray.filter(
-      (item): item is string => typeof item === "string",
+    const parsed = parseJsonFromAI(result) as Array<{
+      situation: string;
+      excuse: string;
+    }>;
+
+    const valid = parsed.filter(
+      (item) =>
+        item &&
+        typeof item.situation === "string" &&
+        typeof item.excuse === "string",
     );
 
-    void saveExcusesToPool(excuses);
+    if (valid.length === 0) throw new Error("Invalid response structure");
+
+    void saveExcusesToPool(valid.map((e) => e.excuse));
 
     return NextResponse.json({
-      excuses,
+      excuses: valid,
       usingBackup: false,
+      source: "ai",
     });
   } catch {
-    const communityExcuses = await getExcusesFromPool(5);
-
-    if (communityExcuses.length >= 5) {
-      return NextResponse.json(
-        { excuses: communityExcuses, usingBackup: true, source: "community" },
-        { status: 200 },
-      );
-    }
-
-    const staticExcuses = getRandomBackups(BACKUP_EXCUSES, 5);
-    const mixed = [...communityExcuses, ...staticExcuses].slice(0, 5);
+    const backupExcuses = getRandomStructuredExcuses(3, category);
 
     return NextResponse.json(
-      { excuses: mixed, usingBackup: true, source: "static" },
+      {
+        excuses: backupExcuses.map((e) => ({
+          situation: e.situation,
+          excuse: e.excuse,
+        })),
+        usingBackup: true,
+        source: "static",
+        message: "Backup excuses muna!",
+      },
       { status: 200 },
     );
   }

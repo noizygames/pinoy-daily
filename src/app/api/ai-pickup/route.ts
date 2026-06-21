@@ -1,94 +1,111 @@
 import { NextResponse } from "next/server";
-import { getRandomPickupLines } from "@/data/backupContent";
-import {
-  getPickupLinesFromPool,
-  savePickupLinesToPool,
-} from "@/lib/communityPool";
 import { generateWithGPT, parseJsonFromAI } from "@/lib/openai";
+import { savePickupLinesToPool } from "@/lib/communityPool";
+import { getRandomStructuredPickupLines } from "@/data/backupContent";
 
-const prompt = `You are a Filipino pick up line writer. Your lines are funny, creative, and very relatable to Filipino life and culture.
+const CATEGORY_CONTEXT: Record<string, string> = {
+  classic:
+    "Classic Pinoy objects — jeepney, trike, load, sari-sari store, palengke, bangko",
+  food: "Filipino food and drinks — adobo, kanin, siomai, lumpia, mami, lugaw, halo-halo, taho",
+  tech: "Technology — phone, WiFi, internet, battery, signal, apps, charging",
+  work: "Work and money — sweldo, meeting, OT, boss, deadline, application, interview",
+  cringe:
+    "Absurd everyday objects — tsinelas, electric fan, basura, silya, bumbero, bangko",
+  "plot-twist":
+    "Starts romantic then ends with Filipino reality — price increase, traffic, signal loss, pagod",
+};
 
-PICK UP LINE STYLES — rotate between all three styles in your 5 results:
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const category = searchParams.get("category") || "classic";
 
-STYLE 1 — PUNS (Filipino word play):
-- Use Filipino or Taglish words that sound like something else
-- The pun should make someone groan and laugh at the same time
-- Examples of the EXACT format:
-  "Ikaw ba ay PLDT? Kasi kahit galit ako sayo, hindi kita matanggalan."
-  "Ikaw ba ay rice cooker? Kasi init na init ako sa'yo at ayaw kitang patayin."
-  "Ikaw ba ay load? Kasi palagi kitang kailangan at mabilis ka namang maubos."
+  const categoryLabel =
+    CATEGORY_CONTEXT[category] ?? CATEGORY_CONTEXT.classic!;
 
-STYLE 2 — HUGOT (emotional Filipino irony):
-- Sounds romantic at first but ends with a funny Filipino reality
-- References Filipino daily life: jeep, signal, brownout, utang, traffic
-- Examples:
-  "Sana ang puso ko ay parang Jollibee — always open para sayo kahit 3am."
-  "Tulad ng jeepney, palagi may puwang para sayo sa puso ko. Medyo siksikan lang."
-  "Parang internet connection sa probinsya — mabagal pero dedicated sayo."
+  const prompt = `Ikaw ay isang Filipino pick up line writer na espesyalista sa nakakaaliw at nakakatawang mga linya.
 
-STYLE 3 — NONSENSE (absurdly specific, very Filipino):
-- Completely random comparison that somehow makes sense
-- More absurd = funnier
-- Examples:
-  "Kamukha mo yung ulam ko kanina. Hindi kita malimutan kahit gusto ko."
-  "Parang sukli sa tindahan — hindi kita inaasahan pero masaya ako na nandiyan ka."
-  "Nararamdaman ko ang iyong presensya tulad ng amoy ng adobo — kahit nasaan ako, naiisip kita."
+CATEGORY: ${categoryLabel}
 
-FORMAT RULES:
-- Each line is 1 to 2 sentences maximum
-- Filipino or Taglish — no full English lines
-- End each line naturally — no exclamation marks needed
-- The funnier the better — aim for the reader to cringe and laugh at the same time
-- Never be rude, sexual, or offensive
+DALAWANG BAHAGI ng bawat pick up line:
 
-WHAT TO AVOID:
-- Do not copy the examples above
-- Do not use "Ikaw ba ay isang bituin" — overused
-- Do not use "Nandito na ang sagot sa aking panalangin" — too cheesy
-- Do not use English pick up lines translated directly to Filipino
-- Do not make them too long
+BAHAGI 1 — THE LINE (setup):
+- Isang tanong o pahayag tungkol sa isang bagay
+- Template: "[Bagay] ka ba?" o "[Bagay] ka?"
+- Dapat mukhang sincere o romantic sa simula
+- Isang sentence lang
 
-Generate exactly 5 Filipino pick up lines using a mix of all three styles. Return ONLY a valid JSON array of exactly 5 strings with no markdown and no explanation.`;
+BAHAGI 2 — THE PUNCHLINE (twist):
+- Nagsisimula sa "Kasi..."
+- Nagpapaliwanag kung bakit ang paghahalintulad
+- Dapat nakakatawa — either nakakaaliw, nakakakilig, o nakakaiyak ng tawa
+- Para sa PLOT TWIST category: dapat masakit pero nakakatawa ang ending
 
-function buildFiveLines(communityLines: string[]): string[] {
-  const needed = Math.max(0, 5 - communityLines.length);
-  const staticLines = needed > 0 ? getRandomPickupLines(needed) : [];
-  return [...communityLines, ...staticLines].slice(0, 5);
-}
+PINAKA-EPEKTIBONG FORMAT:
+Setup: "Sweldo ka ba?"
+Punchline: "Kasi buwan-buwan kitang hinihintay. Pero pagdating mo, wala ka agad."
 
-export async function GET() {
+Setup: "WiFi ka ba?"
+Punchline: "Kasi malakas ang connection natin. Minsan."
+
+Setup: "Adobo ka ba?"
+Punchline: "Kasi gusto kita ngayon, bukas, at sa susunod pang tatlong araw."
+
+RULES:
+- Isulat sa Filipino o Taglish
+- Family-friendly at hindi offensive
+- Ang punchline ay dapat hindi predictable
+- Para sa CLASSIC at FOOD: mas romantic at wholesome ang ending
+- Para sa TECH at WORK: pwedeng slightly relatable sa struggles
+- Para sa CRINGE: mas absurd at walang kwenta pero nakakatawa
+- Para sa PLOT TWIST: magsimula sa romantic, tapusin ng brutal na katotohanan
+- Huwag gamitin ang mga halimbawa sa itaas
+- Huwag gumamit ng "bituin" o "buwan" — overused na
+
+Generate exactly 5 pick up lines. Return ONLY a JSON array of 5 objects:
+[
+  { "line": "setup sentence", "punchline": "kasi... explanation" }
+]
+
+No markdown. No explanation. Only the JSON array.`;
+
   try {
-    const result = await generateWithGPT(prompt);
-    const parsedLines = parseJsonFromAI(result).filter(
-      (item): item is string => typeof item === "string",
+    const result = await generateWithGPT(prompt, 1200);
+    const parsed = parseJsonFromAI(result) as Array<{
+      line: string;
+      punchline: string;
+    }>;
+
+    const valid = parsed.filter(
+      (item) =>
+        item &&
+        typeof item.line === "string" &&
+        typeof item.punchline === "string",
     );
 
-    if (parsedLines.length === 0) {
-      throw new Error("Empty AI response");
-    }
+    if (valid.length === 0) throw new Error("Invalid structure");
 
-    void savePickupLinesToPool(parsedLines, "mixed");
+    void savePickupLinesToPool(
+      valid.map((item) => `${item.line} ${item.punchline}`),
+      category,
+    );
 
     return NextResponse.json({
-      lines: parsedLines.slice(0, 5),
+      lines: valid,
       usingBackup: false,
       source: "ai",
     });
   } catch {
-    const communityLines = await getPickupLinesFromPool(5);
-    const lines = buildFiveLines(communityLines);
-
-    void savePickupLinesToPool(lines, "mixed");
+    const backupLines = getRandomStructuredPickupLines(5, category);
 
     return NextResponse.json(
       {
-        lines,
+        lines: backupLines.map((l) => ({
+          line: l.line,
+          punchline: l.punchline,
+        })),
         usingBackup: true,
-        source: communityLines.length >= 3 ? "community" : "static",
-        message:
-          communityLines.length >= 3
-            ? "Pick up lines mula sa komunidad!"
-            : "Backup pick up lines muna!",
+        source: "static",
+        message: "Backup lines muna!",
       },
       { status: 200 },
     );
