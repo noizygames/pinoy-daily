@@ -9,9 +9,16 @@ export const DAILY_LIMITS = {
   aiPrediction: 10,
   aiExcuse: 5,
   aiSuperpower: 5,
+  aiPickupLine: 3,
+  aiUlam: 1,
 };
 
-export type FeatureKey = "aiPrediction" | "aiExcuse" | "aiSuperpower";
+export type FeatureKey =
+  | "aiPrediction"
+  | "aiExcuse"
+  | "aiSuperpower"
+  | "aiPickupLine"
+  | "aiUlam";
 
 export type LimitStatus = {
   used: number;

@@ -6,7 +6,9 @@ import { usePathname } from "next/navigation";
 const NAV_ITEMS = [
   { href: "/", label: "Hula", emoji: "🌟", activeColor: "#E91E63" },
   { href: "/excuse", label: "Excuse", emoji: "🙈", activeColor: "#E67E22" },
-  { href: "/superpower", label: "Superpower", emoji: "⚡", activeColor: "#9B59B6" },
+  { href: "/superpower", label: "Power", emoji: "⚡", activeColor: "#9B59B6" },
+  { href: "/pickup", label: "Ligaw", emoji: "💘", activeColor: "#E91E63" },
+  { href: "/ulam", label: "Ulam", emoji: "🍚", activeColor: "#FF6B35" },
 ];
 
 export default function BottomNav() {
@@ -44,12 +46,12 @@ export default function BottomNav() {
               gap: "2px",
             }}
           >
-            <span style={{ fontSize: isActive ? "24px" : "20px" }}>
+            <span style={{ fontSize: isActive ? "20px" : "18px" }}>
               {item.emoji}
             </span>
             <span
               style={{
-                fontSize: "10px",
+                fontSize: "9px",
                 fontWeight: isActive ? 700 : 400,
                 color: isActive ? item.activeColor : "#9CA3AF",
               }}

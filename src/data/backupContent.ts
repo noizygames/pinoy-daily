@@ -367,6 +367,62 @@ export const BACKUP_SUPERPOWERS: string[] = [
   "Super galing mo mag-multitask. Pero lahat sabay-sabay mong pinapabayaan.",
 ];
 
+export const BACKUP_PICKUP_LINES: string[] = [
+  // Puns
+  "Ikaw ba ay Google? Kasi ang daming search results tungkol sayo sa utak ko.",
+  "Ikaw ba ay alarm clock? Kasi lagi kang bumubulabog sa puso ko nang maaga.",
+  "Parang GCash ka — lagi kong gustong i-open, pero low balance ang loob ko.",
+  "Ikaw ba ay Google Maps? Kasi pakiramdam ko palagi akong nawawala pag wala ka.",
+  "Kamukha mo ang password ko — mahirap i-remember pero ayaw kong palitan.",
+  "Ikaw ba ay Shopee? Kasi add to cart agad ang feelings ko.",
+  "Parang YouTube ad ka — hindi ko matapos ang araw ko kapag wala ka sa unahan.",
+  "Ikaw ba ay keyboard? Kasi type type lang ako tungkol sayo.",
+  "Parang promo sale ka — limited time offer ang lakas ng loob ko.",
+  "Ikaw ba ay charger? Kasi plug in lang kita, fully charged na ang araw ko.",
+  "Kamukha mo ang traffic sa EDSA — hindi ka umaalis sa isip ko.",
+  "Ikaw ba ay TikTok? Kasi hindi ako makatigil sa scroll ng tungkol sayo.",
+  "Parang jeepney fare ka — konti ang binigay ko pero malaki ang epekto.",
+  "Ikaw ba ay calculator? Kasi ikaw ang plus sa minus ng buhay ko.",
+  "Kamukha mo ang update notification — ayaw kong i-ignore pero natatakot akong buksan.",
+  "Ikaw ba ay dictionary? Kasi hinahanap kita tuwing walang masabi ang puso ko.",
+  "Parang free data promo ka — mabilis mong naubos ang peace ko.",
+  // Hugot
+  "Sana ang pag-ibig ay parang load — palaging may promo at hindi agad na-eexpire.",
+  "Parang MRT ang puso ko — siksikan, mainit, at laging may nag-aabang na umalis.",
+  "Tulad ng utang sa barkada, ang sayo ay hindi ko malimutan kahit ayaw mong maningil.",
+  "Para kang last na kanin sa kaldero — maliit pero ikaw ang hinahanap ng gutom kong puso.",
+  "Sana ang pagmamahal mo ay parang pasahero ng jeep — hindi ka bumababa sa kanto ng takot.",
+  "Parang ex mo sa Facebook — lalabas sa feed ko kahit hindi kita hinahanap.",
+  "Ang puso ko ay parang data plan — ubos na pero patuloy pa ring nag-i-install ng sayo.",
+  "Sana tayo ay parang magkapitbahay — malapit lang pero lagi tayong nag-e-eye contact sa labas.",
+  "Parang brown paper bag ng tindahan, dadalhin kita kahit saan basta kasama kita umuwi.",
+  "Tulad ng sari-sari store, bukas ang puso ko 24/7 pero out of stock ang confidence.",
+  "Sana ang pag-ibig natin ay hindi parang internet sa probinsya — mabagal at madalas mag-brownout.",
+  "Parang huling gising ng alarm, ikaw ang dahilan kung bakit gusto ko nang gumising.",
+  "Ang loob ko ay parang waiting shed — puwede kang maghinto pero huwag mo akong iiwan sa ulan.",
+  "Sana ikaw ay parang suki sa carinderia — araw-araw kitang babalikan kahit pare-pareho ang ulam ng landi.",
+  "Parang missed call ng crush, isang ring lang pero buong araw akong nag-overthink.",
+  "Tulad ng huling barya sa bulsa, maliit man pero ikaw ang hawak ko bago matulog.",
+  "Sana ang puso mo ay parang barkada GC — hindi agad nag-leleave, kahit mabagal mag-reply.",
+  // Nonsense
+  "Kung ikaw ay ketchup, gusto kitang i-partner sa lahat ng ginagawa ko ngayon.",
+  "Parang siko ng kapitbahay, kahit hindi kita kilala malakas ang energy mo sa paligid ko.",
+  "Kamukha mo ang amoy ng bagong lutong kanin — hindi ko alam kung bakit gutom ako sayo.",
+  "Kung ikaw ay electric fan, ikaw ang level 3 ng init ng araw ko.",
+  "Parang yung pusa sa kalsada, napapansin kita kahit wala kang sinasabi.",
+  "Kamukha mo ang plastic na sako ng bigas — simple pero buhay ko ikaw ang laman.",
+  "Kung ikaw ay yung tito ko sa videoke, ikaw ang dahilan ng awkward silence ko sa'yo.",
+  "Parang sapatos sa sale, hindi ko alam kung kasya pero gusto kong subukan.",
+  "Kamukha mo ang sorbetes cart — lumalapit ka lang, natutuwa na ang buong barangay.",
+  "Kung ikaw ay yung plastic ng shampoo sa banyo, ikaw ang huli kong pinipiga bago matulog.",
+  "Parang yung asong tumatahol sa gabi — iniisip kita kahit wala kang ginagawa.",
+  "Kamukha mo ang kapitbahay na palaging nagpa-pasalubong — laging may dala kang epekto.",
+  "Kung ikaw ay tricycle, sasakay ako kahit wala na akong barya dahil sa'yo.",
+  "Parang yung tindahan ni Aling Nene — malapit lang pero parang malayo ang lakas ng loob ko pumunta.",
+  "Kamukha mo ang unan sa jeep — kung malapit ka lang, matutulog na ang worries ko.",
+  "Kung ikaw ay yung last na kutsara sa drawer, hinahanap kita kapag may kumakain na ang puso ko.",
+];
+
 export function getRandomBackup(array: string[]): string {
   if (array.length === 0) {
     return "";
@@ -391,4 +447,8 @@ export function getBackupPredictions(categoryId: string, count = 5): string[] {
   }
 
   return getRandomBackups(predictions, count);
+}
+
+export function getRandomPickupLines(count = 3): string[] {
+  return getRandomBackups(BACKUP_PICKUP_LINES, count);
 }

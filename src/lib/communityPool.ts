@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 
 export const MAX_PER_TABLE = 500;
+export const MAX_PICKUP_LINES = 300;
 
 function shuffleArray<T>(array: T[]): T[] {
   const shuffled = [...array];
@@ -61,6 +62,33 @@ async function trimTableToMax(table: "community_excuses" | "community_superpower
   if (oldest && oldest.length > 0) {
     await supabase
       .from(table)
+      .delete()
+      .in(
+        "id",
+        oldest.map((row) => row.id),
+      );
+  }
+}
+
+async function trimPickupLinesToMax(): Promise<void> {
+  const { count } = await supabase
+    .from("community_pickup_lines")
+    .select("*", { count: "exact", head: true });
+
+  if (!count || count <= MAX_PICKUP_LINES) {
+    return;
+  }
+
+  const excess = count - MAX_PICKUP_LINES;
+  const { data: oldest } = await supabase
+    .from("community_pickup_lines")
+    .select("id")
+    .order("created_at", { ascending: true })
+    .limit(excess);
+
+  if (oldest && oldest.length > 0) {
+    await supabase
+      .from("community_pickup_lines")
       .delete()
       .in(
         "id",
@@ -199,6 +227,46 @@ export async function getSuperPowersFromPool(count = 5): Promise<string[]> {
       .filter((superpower): superpower is string => typeof superpower === "string");
 
     return shuffleArray(superpowers).slice(0, count);
+  } catch {
+    return [];
+  }
+}
+
+export async function savePickupLinesToPool(
+  lines: string[],
+  style: string = "general",
+): Promise<void> {
+  try {
+    for (const line of lines) {
+      await supabase.from("community_pickup_lines").upsert(
+        { line, style },
+        { onConflict: "line", ignoreDuplicates: true },
+      );
+    }
+
+    await trimPickupLinesToMax();
+  } catch {
+    // fail silently
+  }
+}
+
+export async function getPickupLinesFromPool(count = 3): Promise<string[]> {
+  try {
+    const { data } = await supabase
+      .from("community_pickup_lines")
+      .select("line")
+      .order("created_at", { ascending: false })
+      .limit(100);
+
+    if (!data || data.length === 0) {
+      return [];
+    }
+
+    const lines = data
+      .map((row) => row.line)
+      .filter((line): line is string => typeof line === "string");
+
+    return shuffleArray(lines).slice(0, count);
   } catch {
     return [];
   }

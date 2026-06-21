@@ -39,3 +39,31 @@ create policy "community_superpowers_insert"
 create policy "community_superpowers_delete"
   on public.community_superpowers for delete
   using (true);
+
+alter table public.community_pickup_lines enable row level security;
+alter table public.daily_ulam enable row level security;
+
+create policy "community_pickup_lines_select"
+  on public.community_pickup_lines for select
+  using (true);
+
+create policy "community_pickup_lines_insert"
+  on public.community_pickup_lines for insert
+  with check (true);
+
+create policy "community_pickup_lines_update"
+  on public.community_pickup_lines for update
+  using (true)
+  with check (true);
+
+create policy "community_pickup_lines_delete"
+  on public.community_pickup_lines for delete
+  using (true);
+
+create policy "daily_ulam_select"
+  on public.daily_ulam for select
+  using (true);
+
+create policy "daily_ulam_insert"
+  on public.daily_ulam for insert
+  with check (true);

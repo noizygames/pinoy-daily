@@ -2,6 +2,7 @@ import { getDayOfYear } from "@/lib/daily";
 
 const STATIC_FALLBACK = "Walang hula ngayon. Subukan bukas!";
 const AI_FALLBACK = "Walang AI hula ngayon. Subukan ulit mamaya!";
+const PICKUP_FALLBACK = "Walang pickup line ngayon. Subukan ulit!";
 
 function buildSeed(userId: string): number {
   const userSeed = userId
@@ -152,4 +153,96 @@ export function getSeenCount(
   }
 
   return getSeenSet(userId, categoryId, type).size;
+}
+
+function getGlobalSeenKey(userId: string, type: string): string {
+  return `pinoy_seen_${type}_${userId}`;
+}
+
+function getGlobalSeenSet(userId: string, type: string): Set<string> {
+  if (typeof window === "undefined") {
+    return new Set();
+  }
+
+  try {
+    const raw = localStorage.getItem(getGlobalSeenKey(userId, type));
+
+    if (!raw) {
+      return new Set();
+    }
+
+    const parsed: unknown = JSON.parse(raw);
+
+    if (!Array.isArray(parsed)) {
+      return new Set();
+    }
+
+    return new Set(parsed.filter((item): item is string => typeof item === "string"));
+  } catch {
+    return new Set();
+  }
+}
+
+function markGlobalAsSeen(userId: string, line: string, type: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    const seen = getGlobalSeenSet(userId, type);
+    seen.add(line);
+    localStorage.setItem(getGlobalSeenKey(userId, type), JSON.stringify([...seen]));
+  } catch {
+    // fail silently
+  }
+}
+
+function resetGlobalSeen(userId: string, type: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    localStorage.removeItem(getGlobalSeenKey(userId, type));
+  } catch {
+    // fail silently
+  }
+}
+
+function getUnseenGlobalLine(
+  userId: string,
+  lines: string[],
+  type: string,
+  fallback: string,
+): string {
+  if (lines.length === 0) {
+    return fallback;
+  }
+
+  if (typeof window === "undefined") {
+    const seed = buildSeed(userId);
+    return lines[seed % lines.length] ?? fallback;
+  }
+
+  const seen = getGlobalSeenSet(userId, type);
+  let unseenPool = lines.filter((line) => !seen.has(line));
+
+  if (unseenPool.length === 0) {
+    resetGlobalSeen(userId, type);
+    unseenPool = [...lines];
+  }
+
+  const seed = buildSeed(userId);
+  const chosen = unseenPool[seed % unseenPool.length] ?? fallback;
+
+  markGlobalAsSeen(userId, chosen, type);
+  return chosen;
+}
+
+export function getUnseenPickupLine(userId: string, lines: string[]): string {
+  return getUnseenGlobalLine(userId, lines, "pickup", PICKUP_FALLBACK);
+}
+
+export function getUnseenAIPickupLine(userId: string, lines: string[]): string {
+  return getUnseenGlobalLine(userId, lines, "pickup_ai", PICKUP_FALLBACK);
 }
