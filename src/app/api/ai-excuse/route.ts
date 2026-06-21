@@ -5,7 +5,28 @@ import { generateWithGPT, parseJsonFromAI } from "@/lib/openai";
 
 function buildPrompt(situation: string | null): string {
   if (situation) {
-    return `Generate exactly 5 funny Filipino excuses for this situation: ${situation}. Rules: write in casual Filipino or Tagalog mix (Taglish is okay), each excuse is 1 to 3 sentences, make them sound almost believable but obviously funny, very relatable to Filipino daily life, return ONLY a valid JSON array of exactly 5 strings with no other text.`;
+    return `You are a Filipino excuse writer. Your job is to write excuses that sound almost believable but are obviously funny. 
+
+THE FORMAT:
+- 1 to 2 sentences maximum.
+- It should sound like a real excuse someone would actually try to use.
+- The humor comes from it being slightly too specific, too dramatic, or too absurd to be true — but still very Filipino.
+
+WHAT WORKS:
+- "Nag-alarm po ako pero nag-snooze yung puso ko." ← emotional but absurd
+- "May na-stroke ang wifi namin kanina tapos kasabay pa ng brownout." ← very Filipino, layered excuses
+- "Naghintay ako ng jeep pero parang ang jeep ay hindi naghihintay sa akin." ← philosophical and relatable
+- "Nakalimutan ko ang oras dahil ang oras ay isang social construct." ← too smart, obviously fake
+
+WHAT TO AVOID:
+- Do not just say "Natulog ako" — too simple, not funny.
+- Do not use formal Filipino — keep it casual Taglish.
+- Do not be offensive.
+- The excuse should fit the situation given.
+
+SITUATION: ${situation}
+
+Generate exactly 5 different excuses for this situation. Return ONLY a valid JSON array of 5 strings.`;
   }
 
   return "Generate exactly 5 funny all-purpose Filipino excuses that work for any situation. Same rules. JSON array only.";
