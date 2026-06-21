@@ -54,3 +54,18 @@ export type DailyUlam = {
   difficulty: string;
   created_at: string;
 };
+
+export type FeedbackSubmission = {
+  user_id: string;
+  rating: number;
+  favorite_feature: string;
+  opinion: string;
+  comment?: string;
+  email?: string;
+  page_from?: string;
+};
+
+export type FeedbackRecord = FeedbackSubmission & {
+  id: number;
+  created_at: string;
+};

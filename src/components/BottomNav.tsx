@@ -15,7 +15,32 @@ export default function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav
+    <>
+      <a
+        href="/feedback"
+        style={{
+          position: "fixed",
+          bottom: "76px",
+          right: "16px",
+          width: "44px",
+          height: "44px",
+          borderRadius: "50%",
+          background: "linear-gradient(135deg, #2C3E50, #9B59B6)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "20px",
+          textDecoration: "none",
+          boxShadow: "0 4px 12px rgba(155, 89, 182, 0.4)",
+          zIndex: 49,
+        }}
+        title="Send Feedback"
+        aria-label="Send Feedback"
+      >
+        💬
+      </a>
+
+      <nav
       style={{
         position: "fixed",
         bottom: 0,
@@ -62,5 +87,6 @@ export default function BottomNav() {
         );
       })}
     </nav>
+    </>
   );
 }

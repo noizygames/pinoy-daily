@@ -67,3 +67,13 @@ create policy "daily_ulam_select"
 create policy "daily_ulam_insert"
   on public.daily_ulam for insert
   with check (true);
+
+alter table public.feedback enable row level security;
+
+create policy "feedback_select"
+  on public.feedback for select
+  using (true);
+
+create policy "feedback_insert"
+  on public.feedback for insert
+  with check (true);

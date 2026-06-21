@@ -337,6 +337,48 @@ export default function Home() {
             Privacy: Gumagamit kami ng basic analytics lang (page views at
             shares). Walang personal na impormasyon na kinokolekta.
           </p>
+          <div
+            style={{
+              borderTop: "1px solid #f0f0f0",
+              marginTop: "16px",
+              paddingTop: "16px",
+            }}
+          >
+            <a
+              href="/feedback"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                backgroundColor: "#F8F4FF",
+                borderRadius: "12px",
+                padding: "12px 16px",
+                textDecoration: "none",
+                border: "1px solid #E8D5FF",
+              }}
+            >
+              <span style={{ fontSize: "20px" }}>💬</span>
+              <div>
+                <div
+                  style={{ fontSize: "14px", fontWeight: 700, color: "#9B59B6" }}
+                >
+                  Magpadala ng Feedback
+                </div>
+                <div style={{ fontSize: "12px", color: "#aaa" }}>
+                  Sabihin mo sa amin kung paano mapapabuti ang app
+                </div>
+              </div>
+              <span
+                style={{
+                  marginLeft: "auto",
+                  color: "#9B59B6",
+                  fontSize: "16px",
+                }}
+              >
+                →
+              </span>
+            </a>
+          </div>
         </section>
       )}
 

@@ -402,6 +402,15 @@ export default function PickupPage() {
           </p>
         )}
 
+        <div style={{ textAlign: "center", marginBottom: "16px" }}>
+          <a
+            href="/feedback"
+            style={{ fontSize: "13px", color: "#9B59B6", textDecoration: "none" }}
+          >
+            💬 May feedback? I-tap dito
+          </a>
+        </div>
+
         <div className="mt-6 mb-6 rounded-2xl border border-dashed border-gray-200 p-4 text-center text-sm text-gray-300">
           Advertisement
         </div>
