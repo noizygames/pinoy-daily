@@ -1,205 +1,268 @@
 import { NextResponse } from "next/server";
 import { generateWithGPT } from "@/lib/openai";
+import { getManilaDateString, getTodaysUlamName } from "@/data/ulamList";
 import { supabase } from "@/lib/supabase";
 
-const ulamList = [
-  "Adobong Manok",
-  "Sinigang na Baboy",
-  "Kare-Kare",
-  "Paksiw na Isda",
-  "Bistek Tagalog",
-  "Tinolang Manok",
-  "Ginisang Monggo",
-  "Pinakbet",
-  "Lechon Kawali",
-  "Mechado",
-  "Afritada",
-  "Caldereta",
-  "Nilaga",
-  "Menudo",
-  "Pork Sisig",
-  "Bangus Sisig",
-  "Tortang Talong",
-  "Ginisang Ampalaya",
-  "Dinuguan",
-  "Pochero",
-  "Laing",
-  "Bicol Express",
-  "Humba",
-  "Igado",
-  "Pinapaitan",
-  "Bulalo",
-  "Crispy Pata",
-  "Binagoongan",
-  "Pork Barbecue",
-  "Inihaw na Liempo",
-];
+type UlamRecipe = {
+  dish_name: string;
+  description: string;
+  servings: number;
+  cooking_time_minutes: number;
+  difficulty: string;
+  calories_per_serving: number;
+  ingredients: Array<{ name: string; amount: string; unit: string }>;
+  steps: string[];
+};
 
-const fallbackUlam = (today: string) => ({
-  date: today,
-  dish_name: "Adobong Manok",
-  description:
-    "Ang adobo ay isa sa pinakasikat na putahe ng Pilipinas. Ginagamit ang suka at toyo para sa malalim na lasa.",
-  servings: 4,
-  cooking_time_minutes: 45,
-  difficulty: "Easy",
-  calories_per_serving: 380,
-  ingredients: [
-    { name: "Manok", amount: "1", unit: "kg" },
-    { name: "Toyo", amount: "1/2", unit: "cup" },
-    { name: "Suka", amount: "1/4", unit: "cup" },
-    { name: "Bawang", amount: "6", unit: "pcs" },
-    { name: "Bay leaves", amount: "3", unit: "pcs" },
-    { name: "Paminta", amount: "1", unit: "tsp" },
-    { name: "Asukal", amount: "1", unit: "tsp" },
-    { name: "Mantika", amount: "2", unit: "tbsp" },
-  ],
-  steps: [
-    "Hugasan ang manok at hiwain sa serving pieces.",
-    "Ibabad ang manok sa toyo, suka, bawang, at paminta ng 30 minuto.",
-    "Igisa ang bawang sa mantika hanggang ginto.",
-    "Ilagay ang marinated na manok kasama ang marinade.",
-    "Takpan at lutuin sa mahinang apoy ng 20 minuto.",
-    "Alisin ang takip at lutuin hanggang lumapot ang sarsa.",
-    "Tikman at ayusin ang seasoning. Ihain na may kanin.",
-  ],
-});
+function getFallbackUlam(dishName: string): UlamRecipe {
+  const fallbacks: Record<string, UlamRecipe> = {
+    "Adobong Manok": {
+      dish_name: "Adobong Manok",
+      description:
+        "Ang adobo ay isa sa pinakasikat na putahe ng Pilipinas na ginagamit ang suka at toyo para sa malalim na lasa.",
+      servings: 4,
+      cooking_time_minutes: 45,
+      difficulty: "Easy",
+      calories_per_serving: 380,
+      ingredients: [
+        { name: "Manok", amount: "1", unit: "kg" },
+        { name: "Toyo", amount: "1/2", unit: "cup" },
+        { name: "Suka", amount: "1/4", unit: "cup" },
+        { name: "Bawang", amount: "6", unit: "pcs" },
+        { name: "Bay leaves", amount: "3", unit: "pcs" },
+        { name: "Paminta", amount: "1", unit: "tsp" },
+        { name: "Asukal", amount: "1", unit: "tsp" },
+        { name: "Mantika", amount: "2", unit: "tbsp" },
+      ],
+      steps: [
+        "Hugasan ang manok at hiwain sa serving pieces.",
+        "Ibabad ang manok sa toyo, suka, bawang, at paminta ng 30 minuto.",
+        "Igisa ang bawang sa mantika hanggang ginto ang kulay.",
+        "Ilagay ang marinated na manok kasama ang marinade sa kawali.",
+        "Takpan at lutuin sa mahinang apoy ng 20 minuto.",
+        "Alisin ang takip at lutuin pa hanggang lumapot ang sarsa.",
+        "Tikman at ayusin ang seasoning. Ihain na may mainit na kanin.",
+      ],
+    },
+    "Sinigang na Baboy": {
+      dish_name: "Sinigang na Baboy",
+      description:
+        "Ang sinigang ay isang maasim na sabaw na putahe na paboritong-paborito ng mga Pilipino. Ginagamit ang sampalok para sa asim.",
+      servings: 4,
+      cooking_time_minutes: 60,
+      difficulty: "Easy",
+      calories_per_serving: 320,
+      ingredients: [
+        { name: "Baboy ribs", amount: "500", unit: "g" },
+        { name: "Sampalok mix", amount: "1", unit: "pack" },
+        { name: "Kangkong", amount: "1", unit: "bundle" },
+        { name: "Sitaw", amount: "100", unit: "g" },
+        { name: "Talong", amount: "2", unit: "pcs" },
+        { name: "Sibuyas", amount: "1", unit: "pc" },
+        { name: "Kamatis", amount: "2", unit: "pcs" },
+        { name: "Patis", amount: "2", unit: "tbsp" },
+        { name: "Tubig", amount: "6", unit: "cups" },
+      ],
+      steps: [
+        "Pakuluan ang baboy sa tubig ng 10 minuto at itapon ang unang sabaw.",
+        "Lagyan ng bagong tubig at pakuluan muli kasama ang sibuyas at kamatis.",
+        "Lutuin ang baboy ng 30 minuto hanggang lumambot.",
+        "Dagdagan ng sampalok mix at haluin.",
+        "Ilagay ang sitaw at talong at lutuin ng 5 minuto.",
+        "Ilagay ang kangkong at lutuin ng 2 minuto pa.",
+        "Timplahan ng patis at asin. Ihain ng mainit.",
+      ],
+    },
+  };
 
-function buildUlamPrompt(todaysUlam: string): string {
-  return `You are an expert Filipino chef and nutritionist. Generate a complete and accurate recipe for ${todaysUlam}.
+  if (fallbacks[dishName]) {
+    return fallbacks[dishName]!;
+  }
 
-Return a JSON object with EXACTLY this structure — no extra fields, no markdown:
-{
-  "dish_name": "${todaysUlam}",
-  "description": "2 sentence description of the dish and its origin or cultural significance",
-  "servings": 4,
-  "cooking_time_minutes": [accurate number],
-  "difficulty": "Easy" or "Medium" or "Hard",
-  "calories_per_serving": [accurate number based on ingredients],
-  "ingredients": [
-    { "name": "ingredient name", "amount": "quantity", "unit": "g/kg/ml/cups/pcs/tbsp/tsp" }
-  ],
-  "steps": [
-    "Step 1: Complete detailed instruction",
-    "Step 2: Complete detailed instruction"
-  ]
-}
-
-ACCURACY REQUIREMENTS:
-- Ingredients must be the authentic traditional ingredients for ${todaysUlam}
-- Amounts must be realistic for 4 servings
-- Calorie count must be calculated based on the actual ingredients listed
-- Cooking steps must be in the correct order and complete
-- Cooking time must be realistic
-- Use common Filipino measurements where appropriate (cups, tablespoons)
-- Include prep steps like washing, cutting, marinating where needed
-
-IMPORTANT:
-- Return ONLY the JSON object
-- No markdown code blocks
-- No explanation text
-- All fields are required
-- Steps array should have 5 to 10 steps
-- Ingredients array should have 6 to 15 ingredients`;
+  return {
+    dish_name: dishName,
+    description: `Ang ${dishName} ay isang tradisyonal na putaheng Pinoy na paborito sa maraming pamilya.`,
+    servings: 4,
+    cooking_time_minutes: 45,
+    difficulty: "Medium",
+    calories_per_serving: 350,
+    ingredients: [
+      { name: "Main ingredient", amount: "500", unit: "g" },
+      { name: "Bawang", amount: "4", unit: "pcs" },
+      { name: "Sibuyas", amount: "1", unit: "pc" },
+      { name: "Asin", amount: "1", unit: "tsp" },
+      { name: "Paminta", amount: "1/2", unit: "tsp" },
+      { name: "Mantika", amount: "2", unit: "tbsp" },
+    ],
+    steps: [
+      `Ihanda ang mga sangkap para sa ${dishName}.`,
+      "Igisa ang bawang at sibuyas sa mantika.",
+      "Ilagay ang main ingredient at lutuin hanggang maluto.",
+      "Timplahan ng asin at paminta.",
+      "Ihain ng mainit kasama ang kanin.",
+    ],
+  };
 }
 
 async function getCachedUlam(today: string) {
-  const { data } = await supabase
+  const { data: cached, error: cacheError } = await supabase
     .from("daily_ulam")
     .select("*")
     .eq("date", today)
     .maybeSingle();
 
-  return data;
+  if (cacheError) {
+    throw cacheError;
+  }
+
+  return cached;
 }
 
-type UlamInsert = {
-  dish_name: string;
-  description: string;
-  ingredients: unknown;
-  steps: unknown;
-  calories_per_serving: number;
-  servings: number;
-  cooking_time_minutes: number;
-  difficulty: string;
-};
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const cacheOnly = searchParams.get("cacheOnly") === "true";
+  const today = getManilaDateString();
+  const dishName = getTodaysUlamName();
 
-async function saveDailyUlam(today: string, ulamData: UlamInsert) {
-  const { data, error } = await supabase
-    .from("daily_ulam")
-    .insert({
-      date: today,
-      dish_name: ulamData.dish_name,
-      description: ulamData.description,
-      ingredients: ulamData.ingredients,
-      steps: ulamData.steps,
-      calories_per_serving: ulamData.calories_per_serving,
-      servings: ulamData.servings,
-      cooking_time_minutes: ulamData.cooking_time_minutes,
-      difficulty: ulamData.difficulty,
-    })
-    .select()
-    .single();
-
-  if (error) {
+  try {
     const cached = await getCachedUlam(today);
-    if (cached) return cached;
-    throw error;
+
+    if (cached) {
+      if (cached.dish_name !== dishName) {
+        await supabase.from("daily_ulam").delete().eq("date", today);
+      } else {
+        return NextResponse.json({
+          ulam: cached,
+          cached: true,
+          dish_name: cached.dish_name,
+        });
+      }
+    }
+
+    if (cacheOnly) {
+      return NextResponse.json({
+        ulam: null,
+        cached: false,
+        dish_name: dishName,
+      });
+    }
+  } catch (err) {
+    console.error("Cache check failed:", err);
+    if (cacheOnly) {
+      return NextResponse.json({
+        ulam: null,
+        cached: false,
+        dish_name: dishName,
+      });
+    }
   }
 
-  return data;
+  const prompt = `You are an expert Filipino chef and nutritionist. Generate a complete and accurate recipe for ${dishName}.
+
+Return a JSON object with EXACTLY this structure. No markdown, no extra fields, no explanation:
+{
+  "dish_name": "${dishName}",
+  "description": "2 sentence description of the dish and its cultural significance in Filipino cuisine",
+  "servings": 4,
+  "cooking_time_minutes": [accurate realistic number],
+  "difficulty": "Easy" or "Medium" or "Hard",
+  "calories_per_serving": [accurate number calculated from ingredients],
+  "ingredients": [
+    { "name": "ingredient name in Filipino or English", "amount": "quantity", "unit": "g or kg or ml or cups or pcs or tbsp or tsp" }
+  ],
+  "steps": [
+    "Step 1: Complete instruction",
+    "Step 2: Complete instruction"
+  ]
 }
 
-export async function GET() {
-  const today = new Date().toISOString().split("T")[0]!;
+STRICT REQUIREMENTS:
+- ingredients must be the authentic traditional ingredients for ${dishName}
+- amounts must be realistic for exactly 4 servings
+- calories_per_serving must be calculated based on the actual ingredients listed
+- steps must be in correct cooking order with 5 to 10 steps
+- cooking_time_minutes must be realistic
+- Return ONLY the JSON object with no markdown code blocks`;
 
-  const existing = await getCachedUlam(today);
-  if (existing) {
-    return NextResponse.json({ ulam: existing, cached: true });
-  }
-
-  const dayOfYear = Math.floor(
-    (Date.now() - new Date(new Date().getFullYear(), 0, 0).getTime()) / 86400000,
-  );
-  const todaysUlam = ulamList[dayOfYear % ulamList.length]!;
-  const prompt = buildUlamPrompt(todaysUlam);
+  let generatedUlam: UlamRecipe;
 
   try {
     const result = await generateWithGPT(prompt);
 
-    const cleanResult = result
+    const cleaned = result
       .replace(/```json/g, "")
       .replace(/```/g, "")
       .trim();
 
-    const ulamData = JSON.parse(cleanResult) as {
-      dish_name: string;
-      description: string;
-      ingredients: unknown;
-      steps: unknown;
-      calories_per_serving: number;
-      servings: number;
-      cooking_time_minutes: number;
-      difficulty: string;
-    };
+    const parsed = JSON.parse(cleaned) as UlamRecipe;
 
-    const saved = await saveDailyUlam(today, ulamData);
-    return NextResponse.json({ ulam: saved, cached: false });
-  } catch {
-    try {
-      const saved = await saveDailyUlam(today, fallbackUlam(today));
+    if (
+      !parsed.dish_name ||
+      !parsed.ingredients ||
+      !parsed.steps ||
+      !Array.isArray(parsed.ingredients) ||
+      !Array.isArray(parsed.steps)
+    ) {
+      throw new Error("Invalid response structure from GPT");
+    }
+
+    generatedUlam = parsed;
+  } catch (parseError) {
+    console.error("GPT generation or parsing failed:", parseError);
+    generatedUlam = getFallbackUlam(dishName);
+  }
+
+  try {
+    const { data: saved, error: saveError } = await supabase
+      .from("daily_ulam")
+      .upsert(
+        {
+          date: today,
+          dish_name: generatedUlam.dish_name,
+          description: generatedUlam.description,
+          ingredients: generatedUlam.ingredients,
+          steps: generatedUlam.steps,
+          calories_per_serving: generatedUlam.calories_per_serving,
+          servings: generatedUlam.servings || 4,
+          cooking_time_minutes: generatedUlam.cooking_time_minutes,
+          difficulty: generatedUlam.difficulty || "Medium",
+        },
+        { onConflict: "date" },
+      )
+      .select()
+      .single();
+
+    if (saveError) {
+      if (saveError.code === "23505") {
+        const existing = await getCachedUlam(today);
+        if (existing) {
+          return NextResponse.json({
+            ulam: existing,
+            cached: true,
+            dish_name: existing.dish_name,
+          });
+        }
+      }
+
+      console.error("Failed to save to Supabase:", saveError);
       return NextResponse.json({
-        ulam: saved,
+        ulam: { ...generatedUlam, date: today },
         cached: false,
-        usingFallback: true,
-      });
-    } catch {
-      const cached = await getCachedUlam(today);
-      return NextResponse.json({
-        ulam: cached ?? fallbackUlam(today),
-        cached: Boolean(cached),
-        usingFallback: true,
+        saved: false,
       });
     }
+
+    return NextResponse.json({
+      ulam: saved,
+      cached: false,
+      saved: true,
+    });
+  } catch (saveErr) {
+    console.error("Supabase save error:", saveErr);
+    return NextResponse.json({
+      ulam: { ...generatedUlam, date: today },
+      cached: false,
+      saved: false,
+    });
   }
 }

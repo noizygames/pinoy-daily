@@ -10,6 +10,7 @@ import {
   type LimitStatus,
 } from "@/lib/dailyLimits";
 import BottomNav from "@/components/BottomNav";
+import { getTodaysUlamName } from "@/data/ulamList";
 
 type UlamIngredient = {
   name: string;
@@ -59,6 +60,9 @@ export default function UlamPage() {
   );
   const [hasCopied, setHasCopied] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [alreadyGenerated, setAlreadyGenerated] = useState(false);
+
+  const todaysDishName = getTodaysUlamName();
 
   function normalizeUlam(raw: Ulam | null | undefined): Ulam | null {
     if (!raw) return null;
@@ -80,20 +84,17 @@ export default function UlamPage() {
 
   async function loadTodaysUlam() {
     setIsLoading(true);
-    setLoadFailed(false);
 
     try {
-      const res = await fetch("/api/ai-ulam");
-      const data = (await res.json()) as { ulam?: Ulam };
-      const normalized = normalizeUlam(data.ulam);
+      const res = await fetch("/api/ai-ulam?cacheOnly=true");
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
+      const data = (await res.json()) as { ulam?: Ulam | null };
 
-      if (!normalized) {
-        throw new Error("No ulam returned");
+      if (data.ulam) {
+        setUlam(normalizeUlam(data.ulam));
       }
-
-      setUlam(normalized);
-    } catch {
-      setLoadFailed(true);
+    } catch (err) {
+      console.error("Failed to load ulam:", err);
     } finally {
       setIsLoading(false);
     }
@@ -104,9 +105,7 @@ export default function UlamPage() {
     const status = getLimitStatus("aiUlam");
     setLimitStatus(status);
 
-    if (status.used > 0) {
-      void loadTodaysUlam();
-    }
+    void loadTodaysUlam();
   }, []);
 
   async function handleGenerate() {
@@ -114,23 +113,25 @@ export default function UlamPage() {
     if (!consumed) return;
 
     setIsLoading(true);
+    setUlam(null);
 
     try {
       const res = await fetch("/api/ai-ulam");
+      if (!res.ok) throw new Error(`API error: ${res.status}`);
       const data = (await res.json()) as { ulam?: Ulam };
 
-      const normalized = normalizeUlam(data.ulam);
-      if (!normalized) {
-        throw new Error("No ulam returned");
+      if (data.ulam) {
+        setUlam(normalizeUlam(data.ulam));
+        setAlreadyGenerated(true);
+        setLimitStatus(getLimitStatus("aiUlam"));
+      } else {
+        throw new Error("No ulam in response");
       }
-
-      setUlam(normalized);
-      setLoadFailed(false);
-      setLimitStatus(getLimitStatus("aiUlam"));
-    } catch {
+    } catch (err) {
+      console.error("Generate ulam error:", err);
+      alert("Hindi ma-generate ang ulam ngayon. Subukan ulit!");
       releaseLimit("aiUlam");
       setLimitStatus(getLimitStatus("aiUlam"));
-      alert("Hindi ma-generate ngayon. Subukan ulit!");
     } finally {
       setIsLoading(false);
     }
@@ -198,12 +199,44 @@ export default function UlamPage() {
 
   return (
     <main className="min-h-screen bg-gray-50 pb-24">
-      <header className="px-5 pt-8 pb-12" style={{ background: GRADIENT }}>
-        <h1 className="text-3xl font-black text-white">🍚 Ulam Generator</h1>
-        <p className="mt-1 text-sm text-orange-100">Ano ang ulam mo ngayon?</p>
-        <span className="mt-2 inline-block rounded-full bg-white px-3 py-1 text-xs font-semibold text-orange-500">
-          Isang beses lang bawat araw
-        </span>
+      <header
+        style={{
+          background: GRADIENT,
+          padding: "32px 20px 56px",
+        }}
+      >
+        <div
+          style={{
+            fontSize: "13px",
+            color: "rgba(255,255,255,0.8)",
+            marginBottom: "4px",
+          }}
+        >
+          🍚 ULAM NGAYON
+        </div>
+        <div
+          style={{
+            fontSize: "28px",
+            fontWeight: 800,
+            color: "white",
+            lineHeight: 1.2,
+          }}
+        >
+          {ulam ? ulam.dish_name : todaysDishName}
+        </div>
+        <div
+          style={{
+            fontSize: "13px",
+            color: "rgba(255,255,255,0.8)",
+            marginTop: "6px",
+          }}
+        >
+          {new Date().toLocaleDateString("fil-PH", {
+            weekday: "long",
+            month: "long",
+            day: "numeric",
+          })}
+        </div>
       </header>
 
       <div className="-mt-6 rounded-t-3xl bg-white px-5 pt-6">
