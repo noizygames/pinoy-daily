@@ -11,23 +11,9 @@ import {
 } from "@/lib/dailyLimits";
 import BottomNav from "@/components/BottomNav";
 import { getTodaysUlamName } from "@/data/ulamList";
+import { normalizeUlam, type UlamRecipe } from "@/lib/ulamNormalize";
 
-type UlamIngredient = {
-  name: string;
-  amount: string;
-  unit: string;
-};
-
-type Ulam = {
-  dish_name: string;
-  description: string;
-  servings: number;
-  cooking_time_minutes: number;
-  difficulty: string;
-  calories_per_serving: number;
-  ingredients: UlamIngredient[];
-  steps: string[];
-};
+type Ulam = UlamRecipe;
 
 const ORANGE = "#FF6B35";
 const CREAM = "#F7C59F";
@@ -64,37 +50,35 @@ export default function UlamPage() {
 
   const todaysDishName = getTodaysUlamName();
 
-  function normalizeUlam(raw: Ulam | null | undefined): Ulam | null {
-    if (!raw) return null;
+  async function fetchUlam(cacheOnly: boolean) {
+    const url = cacheOnly
+      ? "/api/ai-ulam?cacheOnly=true"
+      : "/api/ai-ulam";
 
-    const ingredients = Array.isArray(raw.ingredients)
-      ? raw.ingredients
-      : typeof raw.ingredients === "string"
-        ? (JSON.parse(raw.ingredients) as UlamIngredient[])
-        : [];
+    const res = await fetch(url, {
+      cache: "no-store",
+      headers: { "Cache-Control": "no-cache" },
+    });
 
-    const steps = Array.isArray(raw.steps)
-      ? raw.steps
-      : typeof raw.steps === "string"
-        ? (JSON.parse(raw.steps) as string[])
-        : [];
+    if (!res.ok) throw new Error(`API error: ${res.status}`);
 
-    return { ...raw, ingredients, steps };
+    return (await res.json()) as { ulam?: Ulam | null };
   }
 
   async function loadTodaysUlam() {
     setIsLoading(true);
+    setLoadFailed(false);
 
     try {
-      const res = await fetch("/api/ai-ulam?cacheOnly=true");
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
-      const data = (await res.json()) as { ulam?: Ulam | null };
+      const data = await fetchUlam(true);
+      const normalized = normalizeUlam(data.ulam);
 
-      if (data.ulam) {
-        setUlam(normalizeUlam(data.ulam));
+      if (normalized) {
+        setUlam(normalized);
       }
     } catch (err) {
       console.error("Failed to load ulam:", err);
+      setLoadFailed(true);
     } finally {
       setIsLoading(false);
     }
@@ -116,12 +100,11 @@ export default function UlamPage() {
     setUlam(null);
 
     try {
-      const res = await fetch("/api/ai-ulam");
-      if (!res.ok) throw new Error(`API error: ${res.status}`);
-      const data = (await res.json()) as { ulam?: Ulam };
+      const data = await fetchUlam(false);
+      const normalized = normalizeUlam(data.ulam);
 
-      if (data.ulam) {
-        setUlam(normalizeUlam(data.ulam));
+      if (normalized) {
+        setUlam(normalized);
         setAlreadyGenerated(true);
         setLimitStatus(getLimitStatus("aiUlam"));
       } else {
@@ -246,7 +229,9 @@ export default function UlamPage() {
             <p className="mb-6 text-center text-gray-600">
               {loadFailed
                 ? "Hindi ma-load ang ulam mo ngayon."
-                : "Handa ka na bang malaman ang ulam mo ngayon?"}
+                : isExhausted
+                  ? "Nagamit mo na ang ulam mo ngayon. Balik ka bukas!"
+                  : "Handa ka na bang malaman ang ulam mo ngayon?"}
             </p>
             {loadFailed ? (
               <button
@@ -348,21 +333,27 @@ export default function UlamPage() {
 
             {activeTab === "ingredients" && (
               <section>
-                {ulam.ingredients.map((ingredient, index) => (
-                  <div key={`${ingredient.name}-${index}`}>
-                    <div className="flex items-center justify-between gap-3 py-3">
-                      <span className="flex-1 font-medium text-gray-800">
-                        {ingredient.name}
-                      </span>
-                      <span className="font-semibold text-orange-500">
-                        {ingredient.amount} {ingredient.unit}
-                      </span>
+                {ulam.ingredients.length > 0 ? (
+                  ulam.ingredients.map((ingredient, index) => (
+                    <div key={`${ingredient.name}-${index}`}>
+                      <div className="flex items-center justify-between gap-3 py-3">
+                        <span className="flex-1 font-medium text-gray-800">
+                          {ingredient.name}
+                        </span>
+                        <span className="font-semibold text-orange-500">
+                          {ingredient.amount} {ingredient.unit}
+                        </span>
+                      </div>
+                      {index < ulam.ingredients.length - 1 && (
+                        <div className="border-b border-gray-100" />
+                      )}
                     </div>
-                    {index < ulam.ingredients.length - 1 && (
-                      <div className="border-b border-gray-100" />
-                    )}
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="py-4 text-center text-sm text-gray-400">
+                    Walang nakuhang sangkap. I-tap ang generate button ulit.
+                  </p>
+                )}
                 <p className="mt-3 text-xs text-gray-400">
                   Kabuuang calories:{" "}
                   {ulam.calories_per_serving * ulam.servings} kcal para sa{" "}
@@ -373,19 +364,25 @@ export default function UlamPage() {
 
             {activeTab === "steps" && (
               <section className="space-y-4">
-                {ulam.steps.map((step, index) => (
-                  <div key={`${index}-${step.slice(0, 20)}`} className="flex">
-                    <span
-                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
-                      style={{ backgroundColor: ORANGE }}
-                    >
-                      {index + 1}
-                    </span>
-                    <p className="ml-3 flex-1 text-sm leading-relaxed text-gray-700">
-                      {step}
-                    </p>
-                  </div>
-                ))}
+                {ulam.steps.length > 0 ? (
+                  ulam.steps.map((step, index) => (
+                    <div key={`${index}-${step.slice(0, 20)}`} className="flex">
+                      <span
+                        className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold text-white"
+                        style={{ backgroundColor: ORANGE }}
+                      >
+                        {index + 1}
+                      </span>
+                      <p className="ml-3 flex-1 text-sm leading-relaxed text-gray-700">
+                        {step}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="py-4 text-center text-sm text-gray-400">
+                    Walang nakuhang steps. I-tap ang generate button ulit.
+                  </p>
+                )}
               </section>
             )}
 

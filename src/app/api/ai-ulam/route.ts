@@ -1,7 +1,24 @@
 import { NextResponse } from "next/server";
 import { generateWithGPT } from "@/lib/openai";
 import { getManilaDateString, getTodaysUlamName } from "@/data/ulamList";
+import { isCompleteUlam, normalizeUlam } from "@/lib/ulamNormalize";
 import { supabase } from "@/lib/supabase";
+
+export const dynamic = "force-dynamic";
+
+const NO_CACHE_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate",
+};
+
+function jsonResponse(data: unknown, init?: ResponseInit) {
+  return NextResponse.json(data, {
+    ...init,
+    headers: {
+      ...NO_CACHE_HEADERS,
+      ...init?.headers,
+    },
+  });
+}
 
 type UlamRecipe = {
   dish_name: string;
@@ -128,11 +145,11 @@ export async function GET(request: Request) {
     const cached = await getCachedUlam(today);
 
     if (cached) {
-      if (cached.dish_name !== dishName) {
+      if (cached.dish_name !== dishName || !isCompleteUlam(cached)) {
         await supabase.from("daily_ulam").delete().eq("date", today);
       } else {
-        return NextResponse.json({
-          ulam: cached,
+        return jsonResponse({
+          ulam: normalizeUlam(cached),
           cached: true,
           dish_name: cached.dish_name,
         });
@@ -140,7 +157,7 @@ export async function GET(request: Request) {
     }
 
     if (cacheOnly) {
-      return NextResponse.json({
+      return jsonResponse({
         ulam: null,
         cached: false,
         dish_name: dishName,
@@ -149,7 +166,7 @@ export async function GET(request: Request) {
   } catch (err) {
     console.error("Cache check failed:", err);
     if (cacheOnly) {
-      return NextResponse.json({
+      return jsonResponse({
         ulam: null,
         cached: false,
         dish_name: dishName,
@@ -236,8 +253,8 @@ STRICT REQUIREMENTS:
       if (saveError.code === "23505") {
         const existing = await getCachedUlam(today);
         if (existing) {
-          return NextResponse.json({
-            ulam: existing,
+          return jsonResponse({
+            ulam: normalizeUlam(existing),
             cached: true,
             dish_name: existing.dish_name,
           });
@@ -245,22 +262,22 @@ STRICT REQUIREMENTS:
       }
 
       console.error("Failed to save to Supabase:", saveError);
-      return NextResponse.json({
-        ulam: { ...generatedUlam, date: today },
+      return jsonResponse({
+        ulam: normalizeUlam(generatedUlam),
         cached: false,
         saved: false,
       });
     }
 
-    return NextResponse.json({
-      ulam: saved,
+    return jsonResponse({
+      ulam: normalizeUlam(saved),
       cached: false,
       saved: true,
     });
   } catch (saveErr) {
     console.error("Supabase save error:", saveErr);
-    return NextResponse.json({
-      ulam: { ...generatedUlam, date: today },
+    return jsonResponse({
+      ulam: normalizeUlam(generatedUlam),
       cached: false,
       saved: false,
     });
