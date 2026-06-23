@@ -226,6 +226,31 @@ export default function ExcusePage() {
         </p>
       </header>
 
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          padding: "12px 20px 0",
+          backgroundColor: "white",
+        }}
+      >
+        <a
+          href="/generators"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            fontSize: "13px",
+            color: "#9CA3AF",
+            textDecoration: "none",
+            fontWeight: 500,
+          }}
+        >
+          <span>←</span>
+          <span>Mga Generator</span>
+        </a>
+      </div>
+
       <div className="-mt-8 rounded-t-3xl bg-white px-5 pt-6">
         <section className="mb-5">
           <p className="mb-3 text-xs font-bold tracking-wider text-gray-400 uppercase">

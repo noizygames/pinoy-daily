@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getTodayContent } from "@/lib/daily";
 import {
   getDailyContentForCategory,
@@ -19,6 +20,7 @@ import ShareCard from "@/components/ShareCard";
 import BottomNav from "@/components/BottomNav";
 
 export default function Home() {
+  const router = useRouter();
   const [selectedCategory, setSelectedCategory] = useState<Category>(CATEGORIES[0]);
   const [currentPrediction, setCurrentPrediction] = useState("");
   const [isAiMode, setIsAiMode] = useState(false);
@@ -313,6 +315,41 @@ export default function Home() {
         I-share sa Facebook, Messenger, Instagram, TikTok, o Viber
       </p>
 
+      <div
+        onClick={() => router.push("/generators")}
+        className="mx-4"
+        style={{
+          background: "linear-gradient(135deg, #1a1a2e, #0f3460)",
+          borderRadius: "20px",
+          padding: "16px 20px",
+          marginBottom: "16px",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+        }}
+      >
+        <div style={{ fontSize: "32px" }}>🎮</div>
+        <div style={{ flex: 1 }}>
+          <div
+            style={{
+              fontSize: "15px",
+              fontWeight: 800,
+              color: "white",
+              marginBottom: "2px",
+            }}
+          >
+            Mga Generator
+          </div>
+          <div style={{ fontSize: "12px", color: "rgba(255,255,255,0.6)" }}>
+            Excuse • Superpower • Pick Up Line • Ulam
+          </div>
+        </div>
+        <div style={{ fontSize: "18px", color: "rgba(255,255,255,0.4)" }}>
+          →
+        </div>
+      </div>
+
       {showAbout && (
         <section className="mx-4 mb-6 rounded-2xl bg-white p-5 shadow-sm">
           <h2 className="mb-2 font-bold text-gray-900">Tungkol sa App</h2>
@@ -344,33 +381,6 @@ export default function Home() {
               paddingTop: "16px",
             }}
           >
-            <a
-              href="/ulam"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                backgroundColor: "#FFF8F0",
-                borderRadius: "12px",
-                padding: "12px 16px",
-                textDecoration: "none",
-                border: "1px solid #FFE0D0",
-                marginBottom: "8px",
-              }}
-            >
-              <span style={{ fontSize: "20px" }}>🍚</span>
-              <div>
-                <div
-                  style={{ fontSize: "14px", fontWeight: 700, color: "#FF6B35" }}
-                >
-                  Ulam Ngayon
-                </div>
-                <div style={{ fontSize: "12px", color: "#aaa" }}>
-                  Isang beses lang bawat araw
-                </div>
-              </div>
-              <span style={{ marginLeft: "auto", color: "#FF6B35" }}>→</span>
-            </a>
             <a
               href="/feedback"
               style={{
