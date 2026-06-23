@@ -252,7 +252,7 @@ export default function SuperpowerPage() {
           }}
         >
           <div style={{ fontSize: "20px", fontWeight: 800, color: "white" }}>
-            ⚡ SwertengPinoy
+            ⚡ Pinoy Daily
           </div>
           <div
             style={{
@@ -272,7 +272,7 @@ export default function SuperpowerPage() {
               textAlign: "center",
             }}
           >
-            swertengpinoy.app
+            pinoy-daily.vercel.app
           </div>
         </div>
 

@@ -495,7 +495,7 @@ export default function ExcusePage() {
               marginBottom: "4px",
             }}
           >
-            🎭 SwertengPinoy — Excuse Generator
+            🎭 Pinoy Daily
           </div>
           <div style={{ fontSize: "20px", fontWeight: 800, color: "white" }}>
             Ang Aking Excuse
@@ -562,7 +562,7 @@ export default function ExcusePage() {
             borderTop: "1px solid #f0f0f0",
           }}
         >
-          swertengpinoy.app
+          pinoy-daily.vercel.app
         </div>
       </div>
 

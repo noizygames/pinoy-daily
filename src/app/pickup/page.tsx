@@ -441,7 +441,7 @@ export default function PickupPage() {
             color: "rgba(255,255,255,0.9)",
           }}
         >
-          💘 SwertengPinoy
+          💘 Pinoy Daily
         </div>
 
         <div>
@@ -477,7 +477,7 @@ export default function PickupPage() {
             textAlign: "center",
           }}
         >
-          swertengpinoy.app
+          pinoy-daily.vercel.app
         </div>
       </div>
 

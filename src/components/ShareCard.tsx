@@ -61,7 +61,7 @@ const ShareCard = forwardRef<HTMLDivElement, Props>(function ShareCard(
               letterSpacing: "-0.02em",
             }}
           >
-            🌟 SwertengPinoy
+            🌟 Pinoy Daily
           </span>
           {isAiGenerated && (
             <span
@@ -165,7 +165,7 @@ const ShareCard = forwardRef<HTMLDivElement, Props>(function ShareCard(
             letterSpacing: "0.04em",
           }}
         >
-          swertengpinoy.app
+          pinoy-daily.vercel.app
         </div>
       </div>
     </div>

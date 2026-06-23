@@ -458,7 +458,7 @@ export default function UlamPage() {
               marginBottom: "4px",
             }}
           >
-            🍚 SwertengPinoy — Ulam Ngayon
+            🍚 Pinoy Daily
           </div>
           <div style={{ fontSize: "26px", fontWeight: 800, color: "white" }}>
             {ulam?.dish_name}
@@ -555,7 +555,7 @@ export default function UlamPage() {
             color: ORANGE,
           }}
         >
-          swertengpinoy.app
+          pinoy-daily.vercel.app
         </div>
       </div>
 
