@@ -8,7 +8,12 @@ const NAV_ITEMS = [
   { href: "/excuse", label: "Excuse", emoji: "🙈", activeColor: "#E67E22" },
   { href: "/superpower", label: "Power", emoji: "⚡", activeColor: "#9B59B6" },
   { href: "/pickup", label: "Ligaw", emoji: "💘", activeColor: "#E91E63" },
-  { href: "/ulam", label: "Ulam", emoji: "🍚", activeColor: "#FF6B35" },
+  {
+    href: "/compatibility",
+    label: "Love Calc",
+    emoji: "❤️",
+    activeColor: "#E91E63",
+  },
 ];
 
 export default function BottomNav() {

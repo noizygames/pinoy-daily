@@ -345,6 +345,33 @@ export default function Home() {
             }}
           >
             <a
+              href="/ulam"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                backgroundColor: "#FFF8F0",
+                borderRadius: "12px",
+                padding: "12px 16px",
+                textDecoration: "none",
+                border: "1px solid #FFE0D0",
+                marginBottom: "8px",
+              }}
+            >
+              <span style={{ fontSize: "20px" }}>🍚</span>
+              <div>
+                <div
+                  style={{ fontSize: "14px", fontWeight: 700, color: "#FF6B35" }}
+                >
+                  Ulam Ngayon
+                </div>
+                <div style={{ fontSize: "12px", color: "#aaa" }}>
+                  Isang beses lang bawat araw
+                </div>
+              </div>
+              <span style={{ marginLeft: "auto", color: "#FF6B35" }}>→</span>
+            </a>
+            <a
               href="/feedback"
               style={{
                 display: "flex",

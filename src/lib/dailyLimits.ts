@@ -11,6 +11,7 @@ export const DAILY_LIMITS = {
   aiSuperpower: 5,
   aiPickupLine: 3,
   aiUlam: 1,
+  aiCompatibility: 5,
 };
 
 export type FeatureKey =
@@ -18,7 +19,8 @@ export type FeatureKey =
   | "aiExcuse"
   | "aiSuperpower"
   | "aiPickupLine"
-  | "aiUlam";
+  | "aiUlam"
+  | "aiCompatibility";
 
 export type LimitStatus = {
   used: number;
